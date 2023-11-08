@@ -50,10 +50,10 @@ int main(void)
     // setup
     struct sockaddr_un server_addr = {
         .sun_family = AF_UNIX,
-        .sun_path = "/home/dekel/src/db2/2/db2_comm",
+        .sun_path = "/home/dekel/src/db2/db2_comm",
     };
 
-    unlink("/home/dekel/src/db2/2/db2_comm"); // failure does not matter here
+    unlink("/home/dekel/src/db2/db2_comm"); // failure does not matter here
 
     server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
     int bind_res = bind(server_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
@@ -74,7 +74,13 @@ int main(void)
     while (1)
     {
         outl("polling...");
-        poll(clients, max_clients, -1);
+        int poll_res = poll(clients, max_clients, -1);
+
+        if (poll_res == -1)
+        {
+            outl("poll no good!");
+            break;
+        }
 
 // new client
         if (clients[0].revents & POLLIN)

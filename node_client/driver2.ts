@@ -36,10 +36,11 @@ const generate_key = (): string => {
     return rv.join('')
 }
 
-
-const test_size = +process.argv[1]
+// first two args are node and driver2.ts
+const test_size = +process.argv[2]
 
 const insert_find_test = async() => {
+    console.log('insert_find_test with test_size', test_size)
     const values = new Array(test_size).fill(0).map(() => generate_ud())
     const keys = new Array(test_size).fill(0).map(() => generate_key())
     
@@ -64,16 +65,19 @@ const insert_find_test = async() => {
 
 // insert_find_test().then(() => console.log('driver done'))
 
-const ud = generate_ud()
-console.log('insert find one test with', ud)
-Db2.insert("smallak", ud).then(status => {
-    if (status === 200) {
-        console.log('insert good!')
-        Db2.find<UserData>("smallak").then(console.log)
+const single_insert_find = (): void => {
+    const ud = generate_ud()
+    console.log('insert find one test with', ud)
+    Db2.insert("smallak", ud).then(status => {
+        if (status === 200) {
+            console.log('insert good!')
+            Db2.find<UserData>("smallak").then(console.log)
+    
+        } else {
+            console.log('insert problem', status)
+        }
+    })
+}
 
-    } else {
-        console.log('insert problem', status)
-    }
-})
-
-
+Db2.connect()
+insert_find_test().then(() => console.log('done'))

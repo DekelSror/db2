@@ -7,24 +7,30 @@
 #include <sys/un.h>
 #include <string.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 #include "db2_types.h"
 #include "db2_client.h"
 
-int client_socket = -1;
-int res_socket = -1;
-
 #define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+
+static int client_socket = -1;
+static int res_socket = -1;
 
 static int db2_connect(void)
 {
     db_response_t response = { 0 };
-    client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
     struct sockaddr_un server_addr = { 
         .sun_family = AF_UNIX,
-        .sun_path = "/home/dekel/src/db2/db2_comm"
+        .sun_path = "some-default-path"
     };
+
+    int config = open("db2_config", O_RDONLY);
+    ssize_t path_read = read(config, server_addr.sun_path, 108);
+    
+    client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+
 
     connect(client_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
 

@@ -66,7 +66,7 @@ static int insert_find_test(uint32_t test_size)
 // setup
     if (Db2.connect() != 200)
     {
-        outl("connett trouble");
+        outl("connect trouble");
         return -1;
     }
 

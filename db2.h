@@ -6,6 +6,7 @@
 
 #include "db2_types.h"
 
+
 #define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 
 #define db2_num_entries 0x100

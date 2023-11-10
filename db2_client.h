@@ -2,7 +2,7 @@
 #define db2_client_h
 
 #include <stdint.h>
-
+#include <stddef.h>
 
 
 typedef struct 

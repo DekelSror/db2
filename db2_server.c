@@ -40,20 +40,26 @@ void remove_client(int index)
     if (index > 0 && clients[index].fd != -1)
     {
         close(clients[index].fd);
+        clients[index].events = 0;
         clients[index].fd = -1;
     }
 }
 
-
+#include <fcntl.h>
 int main(void)
 {
     // setup
-    struct sockaddr_un server_addr = {
+    // 
+    struct sockaddr_un server_addr = 
+    {
         .sun_family = AF_UNIX,
-        .sun_path = "/home/dekel/src/db2/db2_comm",
+        .sun_path = "some-default-path",
     };
 
-    unlink("/home/dekel/src/db2/db2_comm"); // failure does not matter here
+    int config = open("./db2_config", O_RDONLY);
+    ssize_t path_read = read(config, server_addr.sun_path, 108);
+
+    unlink(server_addr.sun_path); // failure does not matter here
 
     server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
     int bind_res = bind(server_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
@@ -67,7 +73,7 @@ int main(void)
     for (int i = 1; i < max_clients; i++)
     {
         clients[i].fd = -1;
-        clients[i].events = POLLIN | POLLHUP;
+        clients[i].events = 0; // proper setup when connecting
     }
 
     // repl

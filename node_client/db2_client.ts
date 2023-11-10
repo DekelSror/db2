@@ -1,9 +1,6 @@
-
-
 import * as net from 'net'
 import * as fs from 'fs'
-import { promisify } from 'util'
-
+import * as path from 'path'
 
 enum Op { insert, find, remove } 
 
@@ -11,7 +8,6 @@ type db2_response = {
     status: number
     body: string
 }
-
 
 type db_op = {
     op: Op
@@ -22,8 +18,6 @@ type db_op = {
     }    
     data: string
 }
-
-const db2_socket_path = '/home/dekel/src/db2/db2_comm'
 
 const parse_response: (raw: Buffer) => db2_response = raw => {
     return {
@@ -46,9 +40,13 @@ const bufferize_op = (op: db_op): Buffer => {
 
 class Db2Client {
     private socket: net.Socket
+    private comm_path: string = 'some-default-path'
+    
+    connect = () => {
+        const config = fs.readFileSync(path.join(process.cwd(), 'db2_config'));
+        this.comm_path = config.toString()
 
-    constructor() {
-        this.socket = net.createConnection({path: db2_socket_path}, () => {
+        this.socket = net.createConnection({path: this.comm_path}, () => {
             console.log('node client connected!')
         })
     }
@@ -107,7 +105,6 @@ class Db2Client {
         return rv
     }
 }
-
 
 const Db2 = new Db2Client()
 

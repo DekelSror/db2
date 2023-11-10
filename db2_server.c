@@ -138,6 +138,8 @@ int main(void)
 
                 while ((char*)op < raw_ops + ops_length)
                 {
+                    const char* op_names[] = {"insert", "find", "remove"};
+                    outl("handling op %s of size %u", op_names[op->_op], op->_size);
                     int body_size = handle_op(op, response);
                     send(clients[i].fd, response, sizeof(db_response_t) + body_size, 0);
 

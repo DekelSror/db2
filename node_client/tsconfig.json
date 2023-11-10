@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "outDir": "build",
+        "resolveJsonModule": true,
+        "rootDir": "."
+    },
+    "include": ["*.ts"]
+}
+  

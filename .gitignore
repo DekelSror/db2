@@ -1,2 +1,4 @@
 bin
 .vscode
+node_client/node_modules
+db2_comm

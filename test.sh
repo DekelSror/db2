@@ -1,10 +1,10 @@
 #!/bin/bash
-
-
-messages=("smallak" "wallak" "tralalalak")
+messages=("client1" "client2" "client3")
 
 for msg in ${messages[@]}; do
-    gnome-terminal -- bash -c "./bin/driver2.out $msg" &
+    (
+        ./bin/driver2.out "$msg" 
+    ) &
 done
 
 

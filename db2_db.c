@@ -58,7 +58,7 @@ int handle_insert(db_op_t* op)
         }
     } while (index != init_index);
 
-    outl("could not find an index for '%s'", key_block->_val);
+    outl("handle_insert could not find an index for '%s'", key_block->_val);
 
     return 1;
 }
@@ -71,10 +71,11 @@ int handle_remove(db_op_t* op)
 
     if (index >= 0)
     {
-        Mempool.free(db[index]._val);
         db[index]._hash = 0;
-        db[index]._val = 0;
-        db[index]._key = 0;
+        Mempool.free(db[index]._key);
+        Mempool.free(db[index]._val);
+        db[index]._key = NULL;
+        db[index]._val = NULL;
     }
 
     return 0;

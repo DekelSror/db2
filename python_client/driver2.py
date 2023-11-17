@@ -23,7 +23,6 @@ def udJsonEncode(ud: UserData):
 def generate_ud():
     return UserData(randint(0, 100), randint(0, 100), randint(0, 100), randint(0, 100))
 
-
 def generate_key():
     return reduce(lambda s, elem: s + elem, [choice(string.ascii_letters) for _ in range(0, randint(6, 16))], '')
 

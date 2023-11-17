@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "db2_types.h"
 
@@ -14,6 +15,11 @@
 db_value_t* handle_find(db_op_t* op);
 int handle_remove(db_op_t* op);
 int handle_insert(db_op_t* op);
+
+
+int timeseries_create(db_op_t* op);
+int timeseries_add(db_op_t* op);
+int timeseries_get_range(db_op_t* op);
 
 
 

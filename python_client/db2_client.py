@@ -20,10 +20,9 @@ def connect() -> int:
 
     status_buf = client_socket.recv(4)
 
-    status = struct.unpack('I', status_buf)[0]
+    status = struct.unpack('i', status_buf)[0]
 
     return status
-
     
 
 def insert(key: str, value) -> int:

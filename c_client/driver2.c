@@ -147,18 +147,33 @@ static int insert_find_test(uint32_t test_size)
     return errors;
 }
 
-static int insert_with_ack_test(void)
+static int timeseries_test(char* name, unsigned name_len, unsigned test_size)
 {
     Db2.connect();
 
+    int ts = Db2.timeseries_create(name, name_len);
 
-    for (int i = 0; i < 10; i++)
+    user_data_t* entries = malloc(sizeof(user_data_t) * test_size);
+
+    for (unsigned i = 0; i < test_size; i++)
     {
-        int res = Db2.insert("key1", 5, "val1", 5);
-        outl("insert #%d res %d", i, res);
-        
+        generate_ud(entries + i);
     }
 
+    outl("ts test connected, data generated");
+
+    for (unsigned i = 0; i < test_size; i++)
+    {
+        sleep(1);
+        int add_res = Db2.timeseries_add(ts, entries + i, sizeof(user_data_t));
+
+        if (add_res != 200)
+        {
+            outl("add problems %d", add_res);
+        }
+    }
+    
+    free(entries);
     Db2.stop();
 
     return 0;
@@ -175,15 +190,12 @@ int main(int argc, char const *argv[])
 
     char const* msg = argv[1];
     size_t msg_len = strlen(argv[1]);
-    // message_test(msg, msg_len);
-
-    // insert_with_ack_test();
-
-    // return 0;
 
     outl("******* client %s start", msg);
 
-    insert_find_test(3);
+    timeseries_test(msg, msg_len, 3);
+
+    // insert_find_test(3);
 
     outl("******* client %s end", msg);
 

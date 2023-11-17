@@ -4,6 +4,7 @@
 #include "db2_mempool.h"
 
 static size_t current_size = 0;
+
 static db_value_t* db2_allocate(size_t size)
 {
     db_value_t* res = (db_value_t*)malloc(size);

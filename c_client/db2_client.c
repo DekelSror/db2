@@ -15,7 +15,6 @@
 #define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 
 static int client_socket = -1;
-static int res_socket = -1;
 
 static int db2_connect(void)
 {
@@ -26,9 +25,9 @@ static int db2_connect(void)
         .sun_path = "some-default-path"
     };
 
-    int config = open("db2_config", O_RDONLY);
+    int config = open("../db2_config", O_RDONLY);
     ssize_t path_read = read(config, server_addr.sun_path, 108);
-    
+    (void)path_read;
     client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
 
@@ -57,7 +56,9 @@ static void db2_stop(void)
     close(client_socket);
 }
 
-static int db2_insert(char* key, uint32_t key_len, char* val, uint32_t val_len)
+// kv
+
+static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 {
     db_response_t response = { 0 };
     char op_buf[sizeof(db_op_t) + 0x4000];
@@ -131,6 +132,84 @@ static void* db2_find(char* key, uint32_t key_len)
 }
 
 
+// timeseries
+
+static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
+{
+    char res_buf[sizeof(db_response_t) + 4] = { 0 };
+    db_response_t* response = (db_response_t*)res_buf;
+
+    char op_buf[1024] = { 0 };
+    db_op_t* op = (db_op_t*)op_buf;
+    op->_op = op_ts_create;
+    op->_header._ts_create._key_size = name_len;
+    memmove(op->_body, name, name_len);
+
+    op->_size = sizeof(db_op_t) + name_len;
+
+    ssize_t sent = send(client_socket, op, op->_size, 0);
+
+    ssize_t recvd = recv(client_socket, response, 8, 0);
+    (void)sent;
+    (void)recvd;
+
+    struct ts_create_res_t 
+    {
+        int _ts;
+    };
+
+    return ((struct ts_create_res_t*)response->_body)->_ts;
+}
+
+static int db2_timeseries_add(db2_ts_descriptor_t ts, void* val, uint32_t val_len)
+{
+    db_response_t response = { 0 };
+    char op_buf[1024] = { 0 };
+    db_op_t* op = (db_op_t*)op_buf;
+
+    op->_op = op_ts_add;
+
+    op->_header._ts_add._val_size = val_len;
+    op->_header._ts_add._ts = ts;
+    op->_size = sizeof(db_op_t) + val_len;
+    memmove(op->_body, val, val_len);
+
+    ssize_t sent = send(client_socket, op, op->_size, 0);
+
+    ssize_t recvd = recv(client_socket ,&response, 4, 0);
+    (void)sent;
+    (void)recvd;
+
+    return response._status;
+}
+
+static int db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t end, void* buf)
+{
+    char response_buf[0x4000] = { 0 };
+    db_response_t* response = (db_response_t*)response_buf;
+    char op_buf[1024] = { 0 };
+    db_op_t* op = (db_op_t*)op_buf;
+    
+    op->_op = op_ts_get_range;
+    op->_header._ts_get_range._ts =ts;
+    memmove(op->_body, &start, sizeof(time_t));
+    memmove(op->_body + 8, &end, sizeof(time_t));
+
+    ssize_t sent = send(client_socket, op, sizeof(db_op_t) + 16, 0);
+    
+    ssize_t recvd = recv(client_socket, response, 0x4000, 0);
+    (void)sent;
+    (void)recvd;
+    if (response->_status == 200)
+    {
+        db_value_t* val = (db_value_t*)response->_body;
+        memmove(buf, val->_val, val->_size);
+    }
+
+    return response->_status;
+}
+
+
 const db2_client_t Db2 = {
     .connect = db2_connect,
     .stop = db2_stop,
@@ -138,4 +217,7 @@ const db2_client_t Db2 = {
     .insert = db2_insert,
     .remove = db2_remove,
     .message = db2_message,
+    .timeseries_create = db2_timeseries_create,
+    .timeseries_add = db2_timeseries_add,
+    .timeseries_get_range = db2_timeseries_get_range
 };

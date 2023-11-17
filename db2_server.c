@@ -144,7 +144,7 @@ int main(void)
 
                 while ((char*)op < raw_ops + ops_length)
                 {
-                    const char* op_names[] = {"insert", "find", "remove"};
+                    const char* op_names[] = {"kv_insert", "kv_find", "kv_remove", "ts_create", "ts_add", "ts_get_range"};
                     outl("handling op %s of size %u", op_names[op->_op], op->_size);
                     int body_size = handle_op(op, response);
                     send(clients[i].fd, response, sizeof(db_response_t) + body_size, 0);
@@ -194,6 +194,22 @@ int handle_op(db_op_t* op, db_response_t* response)
         {
             response->_status = 404;
         }
+        break;
+    }
+    case op_ts_create: {
+        int ts = timeseries_create(op);
+        response_body_size += 4;
+        response->_status = (ts != -1 ? 200 : 400);
+        break;
+    }
+    case op_ts_add: {
+        int res = timeseries_add(op);
+        response->_status = (res == 0 ? 200 : 400);
+        break;
+    }
+    case op_ts_get_range: {
+        int res = timeseries_get_range(op);
+        response->_status = (res == 0 ? 200 : 400);
         break;
     }
 

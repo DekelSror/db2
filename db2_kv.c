@@ -5,7 +5,7 @@
 #include "db2_types.h"
 #include "db2.h"
 
-static db_entry db[db2_num_entries] = { 0 };
+static db_entry_t db[db2_num_entries] = { 0 };
 
 static long entry_index(char* key, unsigned key_size);
 static uint64_t simple_hash(char* key, uint32_t len);
@@ -13,13 +13,13 @@ uint64_t(*db_hash)(char*, uint32_t) = simple_hash;
 
 int handle_insert(db_op_t* op)
 {
-    db_op_insert_t header = op->_header._insert;
+    struct db_op_insert_t header = op->_header._insert;
     outl("insert key_size %u val_size %u", header._key_size, header._val_size);
     
-    db_value_t* key_block = (db_value_t*)Mempool.allocate(header._key_size + 4);
+    db_value_t* key_block = (db_value_t*)Mempool.allocate(header._key_size + sizeof(db_value_t));
     key_block->_size = header._key_size;
 
-    db_value_t* val_block = (db_value_t*)Mempool.allocate(header._val_size + 4); // 4 for size
+    db_value_t* val_block = (db_value_t*)Mempool.allocate(header._val_size + sizeof(db_value_t));
     val_block->_size = header._val_size;
 
     memmove(key_block->_val, op->_body, header._key_size);
@@ -65,7 +65,7 @@ int handle_insert(db_op_t* op)
 
 int handle_remove(db_op_t* op)
 {
-    db_op_remove_t header = op->_header._remove;
+    struct db_op_remove_t header = op->_header._remove;
     
     long index = entry_index(op->_body, header._key_size);
 
@@ -83,7 +83,7 @@ int handle_remove(db_op_t* op)
 
 db_value_t* handle_find(db_op_t* op)
 {
-    db_op_find_t header = op->_header._find;
+    struct db_op_find_t header = op->_header._find;
 
     long index = entry_index(op->_body, header._key_size);
 

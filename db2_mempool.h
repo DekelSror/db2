@@ -5,6 +5,8 @@
 #include "db2_types.h"
 
 
+//
+
 typedef struct
 {
     db_value_t*(*allocate)(size_t size);

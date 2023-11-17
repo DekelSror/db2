@@ -1,5 +1,5 @@
-#ifndef db_types_h
-#define db_types_h
+#ifndef db2_types
+#define db2_types
 
 #include <stdint.h>
 
@@ -81,4 +81,4 @@ typedef struct
     char _body[];
 } db_op_t;
 
-#endif // db_types_h
+#endif // db2_types

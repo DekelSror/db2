@@ -68,6 +68,8 @@ static int add(int i, void* val, unsigned val_len, time_t add_time)
         return 1;
     }
 
+    outl("ts_add to ts %d time %ld", i, add_time);
+
     db_value_t* val_block = (db_value_t*)Mempool.allocate(sizeof(db_value_t) + val_len);
 
     val_block->_size = val_len;

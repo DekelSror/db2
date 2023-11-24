@@ -123,13 +123,15 @@ static int insert_find_test(uint32_t test_size)
             errors++;
         }
 
-        repr_data(res);
-
         const int cmp_res = memcmp(values + i, res, sizeof(user_data_t));
         if (cmp_res != 0)
         {
             errors++;
             outl("found worng value for key '%s'", keys[i]);
+            printf("inserted - ");
+            repr_data(values + i);
+            printf("found - ");
+            repr_data(res);
         }
     }
 

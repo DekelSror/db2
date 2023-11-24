@@ -65,8 +65,7 @@ struct db_op_ts_get_range_t
     time_t _end;
 };
 
-// insert, remove and find need exactly 8 bytes of body
-// but this will be difficult to keep up
+
 union db_op_header_t 
 {
     struct db_op_insert_t _insert;

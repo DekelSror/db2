@@ -100,7 +100,7 @@ static int handle_client_request(int client)
     db_op_t op = { 0 };
     ssize_t ops_length = recv(clients[client].fd, &op, sizeof(db_op_t), 0);
 
-    if (ops_length == 0) 
+    if (ops_length == 0)
     {
         outl("pollin disconnect %d", client);
         remove_client(client);

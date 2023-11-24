@@ -90,8 +90,8 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
     recieve_response(&response);
     outl("got ack for insert; starting to send key/value");
 
-    stream_out(client_socket, key, key_len);
-    stream_out(client_socket, val, val_len);
+    ssize_t key_sent = stream_out(client_socket, key, key_len);
+    ssize_t val_sent = stream_out(client_socket, val, val_len);
 
     ssize_t recvd = recieve_response(&response);
     (void)recvd;
@@ -130,11 +130,10 @@ static void* db2_find(char* key, uint32_t key_len)
     ssize_t sent = send_op(&op);
     ssize_t recvd = recieve_response(&response);
     
-    db_value_t* found = Mempool.allocate(response._body_size);
+    void* found = Mempool.allocate(response._body_size);
     stream_in(client_socket, found, response._body_size);
 
-    // recieve final ack?`
-    return found->_val;
+    return found;
 }
 
 

@@ -124,7 +124,7 @@ static int handle_op(db_op_t* op, int client_index)
     {
     case op_insert: {
         int res = handle_insert(op, client_socket);
-        response._status = res ? 200 : 500;
+        response._status = res ? 500 : 200;
         break;
     }
     case op_remove: {
@@ -134,7 +134,7 @@ static int handle_op(db_op_t* op, int client_index)
     }
     case op_find: {
         int res = handle_find(op, client_socket);
-        response._status = res ? 200 : 404;
+        response._status = res ? 404 : 200;
         break;
     }
     case op_ts_create: {

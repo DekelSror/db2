@@ -99,10 +99,15 @@ int handle_find(db_op_t *op, int client_socket)
         db_response_t response = { ._status = 200, ._body_size = db[index]._val->_size };
         send(client_socket, &response, sizeof(db_response_t), 0);
         stream_out(client_socket, db[index]._val->_val, db[index]._val->_size);
-        return 1;
+        return 0;
+    }
+    else
+    {
+        db_response_t response = { ._status = 404 };
+        send(client_socket, &response, sizeof(db_response_t), 0);
     }
 
-    return 0;
+    return 1;
 }
 
 //

@@ -129,11 +129,17 @@ static void* db2_find(char* key, uint32_t key_len)
 
     ssize_t sent = send_op(&op);
     ssize_t recvd = recieve_response(&response);
-    
-    void* found = Mempool.allocate(response._body_size);
-    stream_in(client_socket, found, response._body_size);
+    void* found = NULL;
 
+    if (response._status == 200)
+    {
+        found = Mempool.allocate(response._body_size);
+        stream_in(client_socket, found, response._body_size);
+    }
+
+    recvd = recieve_response(&response);
     return found;
+
 }
 
 

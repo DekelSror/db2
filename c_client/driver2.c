@@ -133,6 +133,8 @@ static int insert_find_test(uint32_t test_size)
             printf("found - ");
             repr_data(res);
         }
+
+        free(res);
     }
 
     outl("find done");

@@ -1,25 +1,31 @@
 #include <string.h>
 
+#include "utilities.h"
 #include "db2_types.h"
 #include "db2_mempool.h"
 #include "db2.h"
 
-static struct timeseries_t
+typedef struct 
 {
-    char _key[128];
-    unsigned _key_len;
+    time_t _time;
+    db_value_t* _val;
+} timeseries_entry_t;
+
+typedef struct
+{
+    db_value_t* _key;
     unsigned _capacity;
     unsigned _size;
-    struct timeseries_entry_t
-    {
-        time_t _time;
-        db_value_t* _value;
-    }* _entries;
-} db[20] = { 0 };
+    timeseries_entry_t* _entries;
+} timeseries_t;
+
+static timeseries_t db[20] = { 0 };
 
 static int next_series_index = 0;
 
-int timeseries_create(db_op_t* op)
+static char response_buf[0x4000] = { 0 };
+
+int timeseries_create(db_op_t* op, int client_socket)
 {
     struct db_op_ts_create_t header = op->_header._ts_create;
 
@@ -29,18 +35,30 @@ int timeseries_create(db_op_t* op)
         return -1;
     }
 
-    db[next_series_index]._key_len = header._key_size;
-    memmove(db[next_series_index]._key, op->_body, header._key_size);
+    db_value_t* key = Mempool.allocate(header._key_size + sizeof(db_value_t));
+    key->_size = header._key_size;
+    stream_in(client_socket, key->_val, header._key_size);
 
-    outl("creating timeseries '%s' index %d", db[next_series_index]._key, next_series_index);
+    for (int i = 0; i < next_series_index; i++)
+    {
+        if (memcmp(key->_val, db[i]._key, header._key_size) == 0)
+        {
+            Mempool.free(key);
+            outl("series '%s' already exists", db[i]._key->_val);
+            return i;
+        }
+    }
+    
+    db[next_series_index]._key = key;
 
-    // design mistake - mempool is for db_value_t objects, not timeseries_entry
-    db[next_series_index]._entries = Mempool.allocate(sizeof(struct timeseries_entry_t) * 1024);
+    outl("creating timeseries '%s' index %d", db[next_series_index]._key->_val, next_series_index);
+
+    db[next_series_index]._entries = Mempool.allocate(sizeof(timeseries_entry_t) * 1024);
     db[next_series_index]._capacity = 1024;
     db[next_series_index]._size = 1;
 
     db[next_series_index]._entries[0]._time = time(NULL);
-    db[next_series_index]._entries[0]._value = NULL;
+    db[next_series_index]._entries[0]._val = NULL;
 
     int rv = next_series_index;
     next_series_index++;
@@ -48,55 +66,61 @@ int timeseries_create(db_op_t* op)
     return rv;
 }
 
-
-static int add(int i, void* val, unsigned val_len, time_t add_time)
+static int add_conditions(int ts_index, time_t add_time)
 {
-    if (db[i]._size == db[i]._capacity)
+    timeseries_t ts = db[ts_index];
+
+    if (ts_index >= next_series_index)
     {
-        outl("ts_add size == capacity for ts %d. future - try to allocate more memory", i);
-        return 1;
+        outl("timeseries %d does not exist", ts_index);
+        return 0;
     }
 
-    if (db[i]._entries[db[i]._size - 1]._time >= add_time)
+    if (ts._size == ts._capacity)
+    {
+        outl("ts_add size == capacity for ts %d. future - try to allocate more memory", ts_index);
+        return 0;
+    }
+    if (ts._entries[ts._size - 1]._time >= add_time)
     {
         outl("ts_add cannot add earlier to latest latest(%ld) - new(%ld) = %ld", 
-            db[i]._entries[db[i]._size - 1]._time, 
+            ts._entries[ts._size - 1]._time, 
             add_time, 
-            db[i]._entries[db[i]._size - 1]._time - add_time
+            ts._entries[ts._size - 1]._time - add_time
         );
 
-        return 1;
+        return 0;
+    }
+    if (next_series_index < ts_index) {
+        outl("ts_add op has ts %d but ts only has up to %d", ts_index, next_series_index);
+        return 0;
     }
 
-    outl("ts_add to ts %d time %ld", i, add_time);
+    return 1;
+}
 
-    db_value_t* val_block = (db_value_t*)Mempool.allocate(sizeof(db_value_t) + val_len);
+int timeseries_add(db_op_t* op, int client_socket)
+{
+    time_t add_time = time(NULL);
+    struct db_op_ts_add_t header = op->_header._ts_add;
+    timeseries_t ts = db[header._ts];
 
-    val_block->_size = val_len;
-    memmove(val_block->_val, val, val_len);
+    if (add_conditions(header._ts, add_time))
+    {
+        db_value_t* val = Mempool.allocate(header._val_size);
+        val->_size = header._val_size;
+        stream_in(client_socket, val->_val, header._val_size);
 
-    db[i]._entries[db[i]._size]._time = add_time;
-    db[i]._entries[db[i]._size]._value = val_block;
+        ts._entries[ts._size]._time = add_time;
+        ts._entries[ts._size]._val = val;
 
-    db[i]._size++;
+        ts._size++;
+    }
 
     return 0;
 }
 
-int timeseries_add(db_op_t* op)
-{
-    time_t add_time = time(NULL);
-    struct db_op_ts_add_t header = op->_header._ts_add;
-    
-    if (next_series_index < header._ts) {
-        outl("ts_add op has ts %d but ts only has up to %d", header._ts, next_series_index);
-        return 1;
-    }
-
-    return add(header._ts, op->_body, header._val_size, add_time);
-}
-
-int timeseries_get_range(db_op_t* op)
+int timeseries_get_range(db_op_t* op, int client_socket)
 {
     struct db_op_ts_get_range_t header = op->_header._ts_get_range;
     if (header._ts == next_series_index)
@@ -104,10 +128,10 @@ int timeseries_get_range(db_op_t* op)
         return 1;
     }
     
-    struct timeseries_t series = db[header._ts];
+    timeseries_t series = db[header._ts];
 
-    time_t start = (time_t)op->_body;
-    time_t end = (time_t)(op->_body + 8);
+    time_t start = header._start;
+    time_t end = header._end;
     
     unsigned index = 0;
 
@@ -120,15 +144,18 @@ int timeseries_get_range(db_op_t* op)
 
         index++;
     }
+    // unsigned start_index = index;
 
-    db_value_t* rv = { 0 };
+    db_value_t* rv = (db_value_t*)response_buf;
+
 
     while (series._entries[index]._time < end)
     {
-        memmove(rv->_val + rv->_size, series._entries[index]._value->_val, series._entries[index]._value->_size);
-        rv->_size += series._entries[index]._value->_size;
+        memmove(rv->_val + rv->_size, series._entries[index]._val->_val, series._entries[index]._val->_size);
+        rv->_size += series._entries[index]._val->_size;
         index++;
-    }    
+    }
+
     
     return 0;
 }

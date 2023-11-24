@@ -17,6 +17,7 @@ typedef struct
     int(*remove)(char* key, uint32_t key_len);
     void*(*find)(char* key, uint32_t key_len);
     //
+    // timeseries_create will return the descriptor if the series already exists
     db2_ts_descriptor_t(*timeseries_create)(char* key, uint32_t key_len);
     int(*timeseries_add)(db2_ts_descriptor_t ts, void* val, uint32_t val_len);
     int(*timeseries_get_range)(db2_ts_descriptor_t ts, time_t start, time_t end, void* buf);

@@ -9,12 +9,28 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+
+#include "db2_mempool.h"
+#include "utilities.h"
 #include "db2_types.h"
 #include "db2_client.h"
 
 #define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+static uint64_t simple_hash(char *key, uint32_t len);
+uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
 
 static int client_socket = -1;
+
+static ssize_t send_op(db_op_t* op)
+{
+    return send(client_socket, op, sizeof(db_op_t), 0);
+}
+
+static ssize_t recieve_response(db_response_t* response)
+{
+    return recv(client_socket, response, sizeof(db_response_t), 0);
+}
+
 
 static int db2_connect(void)
 {
@@ -30,10 +46,9 @@ static int db2_connect(void)
     (void)path_read;
     client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
-
     connect(client_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
 
-    ssize_t recvd = recv(client_socket, &response, 4, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)recvd;
 
     return response._status;
@@ -45,7 +60,7 @@ static int db2_message(const char* msg, size_t msg_len)
     ssize_t sent =  send(client_socket, msg, msg_len, 0);
     outl("got %ld for msg '%s'", sent, msg);
 
-    ssize_t recvd = recv(client_socket, &response, 4, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)recvd;
 
     return response._status;
@@ -58,24 +73,27 @@ static void db2_stop(void)
 
 // kv
 
+
 static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 {
     db_response_t response = { 0 };
-    char op_buf[sizeof(db_op_t) + 0x4000];
     
     outl("insert key '%s' start", key);
 
-    db_op_t* op = (db_op_t*)op_buf;
-    op->_op = op_insert;
-    op->_header._insert._key_size = key_len;
-    op->_header._insert._val_size = val_len;
-    op->_size = sizeof(db_op_t) + key_len + val_len;
-    memmove(op->_body, key, key_len);
-    memmove(op->_body + key_len, val, val_len);
+    db_op_t op = {
+        ._op = op_insert,
+        ._header._insert._key_size = key_len,
+        ._header._insert._val_size = val_len
+    };
 
-    ssize_t sent = send(client_socket, op, op->_size, 0);
-    ssize_t recvd = recv(client_socket, &response, 4, 0);
-    (void)sent;
+    send_op(&op);
+    recieve_response(&response);
+    outl("got ack for insert; starting to send key/value");
+
+    ssize_t key_sent = stream_out(client_socket, key, key_len);
+    ssize_t val_sent = stream_out(client_socket, val, val_len);
+
+    ssize_t recvd = recieve_response(&response);
     (void)recvd;
     
     outl("insert status %d", response._status);
@@ -86,49 +104,36 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 static int db2_remove(char* key, uint32_t key_len)
 {
     db_response_t response = { 0 };
-    char op_buf[sizeof(db_op_t) + 0x4000];
-    db_op_t* op = (db_op_t*)op_buf;
-    
-    op->_op = op_remove,
-    op->_header._remove._key_size = key_len;
-    op->_size = sizeof(db_op_t) + key_len;
+    db_op_t op = {
+        ._op = op_remove,
+        ._header._remove._key_hash = db_hash(key, key_len),
+    };
 
-    memmove(op->_body, key, key_len);
-
-    ssize_t sent = send(client_socket, op, sizeof(db_op_t) + key_len, 0);
+    ssize_t sent = send_op(&op);
     (void)sent;
 
-    ssize_t recvd = recv(client_socket, &response, 4, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)recvd;
 
     return response._status;
 }
 
-
-
-static char response_buf[0x4000] = { 0 };
 static void* db2_find(char* key, uint32_t key_len)
 {
-    char op_buf[sizeof(db_op_t) + 0x4000] = { 0 };
+    db_op_t op = {
+        ._op = op_find,
+        ._header._find._key_hash = db_hash(key, key_len)
+    };
 
-    db_op_t* op = (db_op_t*)op_buf;
-    db_response_t* response = (db_response_t*)response_buf;
+    db_response_t response = { 0 };
+
+    ssize_t sent = send_op(&op);
+    ssize_t recvd = recieve_response(&response);
     
-    op->_op = op_find,
-    op->_header._find._key_size = key_len;
+    void* found = Mempool.allocate(response._body_size);
+    stream_in(client_socket, found, response._body_size);
 
-    op->_size = sizeof(db_op_t) + key_len;
-
-    memmove(op->_body, key, key_len);
-
-    ssize_t sent = send(client_socket, op, op->_size, 0);
-
-    outl("sent find '%s' got %ld", key, sent);
-
-    ssize_t recvd = recv(client_socket, response, 0x4000, 0);
-    outl("recvd %ld for find of '%s'", recvd, key);
-
-    return response->_status == 200 ? response->_body : NULL;
+    return found;
 }
 
 
@@ -136,79 +141,74 @@ static void* db2_find(char* key, uint32_t key_len)
 
 static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
 {
-    char res_buf[sizeof(db_response_t) + 4] = { 0 };
-    db_response_t* response = (db_response_t*)res_buf;
+    db_response_t response = { 0 };
 
-    char op_buf[1024] = { 0 };
-    db_op_t* op = (db_op_t*)op_buf;
-    op->_op = op_ts_create;
-    op->_header._ts_create._key_size = name_len;
-    memmove(op->_body, name, name_len);
+    db_op_t op = {
+        ._op = op_ts_create,
+        ._header._ts_create._key_size = name_len
+    };
+    
 
-    op->_size = sizeof(db_op_t) + name_len;
+    ssize_t sent = send_op(&op);
 
-    ssize_t sent = send(client_socket, op, op->_size, 0);
-
-    ssize_t recvd = recv(client_socket, response, 8, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)sent;
     (void)recvd;
 
-    struct ts_create_res_t 
-    {
-        int _ts;
-    };
 
-    return ((struct ts_create_res_t*)response->_body)->_ts;
+    stream_out(client_socket, name, name_len);
+
+    db2_ts_descriptor_t ts = -1;
+
+    recv(client_socket, &ts, sizeof(ts), 0);
+    
+    return ts;
 }
 
 static int db2_timeseries_add(db2_ts_descriptor_t ts, void* val, uint32_t val_len)
 {
     db_response_t response = { 0 };
-    char op_buf[1024] = { 0 };
-    db_op_t* op = (db_op_t*)op_buf;
+    db_op_t op = {
+        ._op = op_ts_add,
+        ._header._ts_add._val_size = val_len,
+        ._header._ts_add._ts = ts,
+    };
+    
+    
+    ssize_t sent = send_op(&op);
 
-    op->_op = op_ts_add;
-
-    op->_header._ts_add._val_size = val_len;
-    op->_header._ts_add._ts = ts;
-    op->_size = sizeof(db_op_t) + val_len;
-    memmove(op->_body, val, val_len);
-
-    ssize_t sent = send(client_socket, op, op->_size, 0);
-
-    ssize_t recvd = recv(client_socket ,&response, 4, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)sent;
     (void)recvd;
+
+    stream_out(client_socket, val, val_len);
 
     return response._status;
 }
 
 static int db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t end, void* buf)
 {
-    char response_buf[0x4000] = { 0 };
-    db_response_t* response = (db_response_t*)response_buf;
-    char op_buf[1024] = { 0 };
-    db_op_t* op = (db_op_t*)op_buf;
-    
-    op->_op = op_ts_get_range;
-    op->_header._ts_get_range._ts =ts;
-    memmove(op->_body, &start, sizeof(time_t));
-    memmove(op->_body + 8, &end, sizeof(time_t));
+    db_response_t response = { 0 };
+    db_op_t op = {    
+        ._op = op_ts_get_range,
+        ._header._ts_get_range._ts = ts,
+        ._header._ts_get_range._start = start,
+        ._header._ts_get_range._end = end
+    };
 
-    ssize_t sent = send(client_socket, op, sizeof(db_op_t) + 16, 0);
+    ssize_t sent = send_op(&op);
     
-    ssize_t recvd = recv(client_socket, response, 0x4000, 0);
+    ssize_t recvd = recieve_response(&response);
     (void)sent;
     (void)recvd;
-    if (response->_status == 200)
+    if (response._status == 200)
     {
-        db_value_t* val = (db_value_t*)response->_body;
-        memmove(buf, val->_val, val->_size);
+        // db_value_t* val = (db_value_t*)response._body;
+        // memmove(buf, val->_val, val->_size);
     }
 
-    return response->_status;
+    return response._status;
 }
-
 
 const db2_client_t Db2 = {
     .connect = db2_connect,
@@ -221,3 +221,16 @@ const db2_client_t Db2 = {
     .timeseries_add = db2_timeseries_add,
     .timeseries_get_range = db2_timeseries_get_range
 };
+
+static uint64_t simple_hash(char *key, uint32_t _len)
+{
+    int len = (int)_len;
+    uint64_t h = 5381;
+
+    for (int i = 0; i < len; i++)
+    {
+        h = (h * 33) + key[i];
+    }
+
+    return h;
+}

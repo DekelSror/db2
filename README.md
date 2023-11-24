@@ -1,7 +1,4 @@
-
-
 # Db2 - simple local database
-
 
 ## Server
 ```
@@ -9,11 +6,11 @@ make server
 ./bin/db2.out
 ```
 
-1. Key-Value 
+1. Key-Value
     - insert (key, key_len, val, val_len) - (updates on existing key)
     - find (key, key_lan)
     - remove (key, key_len)
-2. Time Series 
+2. Time Series
     - create (name) -> series descriptor
     - add (descriptor, value)
     - get range (descriptor, start, end)
@@ -51,6 +48,8 @@ System resources -
     
 2. Socket
     - DB2_SOCKET_PATH ([cwd]/db2_comm)
-    - a config file [cwd]/db2_config 
+
+
+
      
 

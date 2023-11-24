@@ -12,14 +12,15 @@
 
 #define db2_num_entries 0x100
 
-db_value_t* handle_find(db_op_t* op);
+int handle_find(db_op_t* op, int client_socket);
 int handle_remove(db_op_t* op);
-int handle_insert(db_op_t* op);
+int handle_insert(db_op_t* op, int client_socket);
 
+typedef int db2_ts_descriptor_t;
 
-int timeseries_create(db_op_t* op);
-int timeseries_add(db_op_t* op);
-int timeseries_get_range(db_op_t* op);
+int timeseries_create(db_op_t* op, int client_socket);
+int timeseries_add(db_op_t* op, int client_socket);
+int timeseries_get_range(db_op_t* op, int client_socket);
 
 
 

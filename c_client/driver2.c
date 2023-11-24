@@ -1,3 +1,6 @@
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <string.h>
 #include <unistd.h> // sleep
 #include <stdlib.h> // rand
@@ -120,13 +123,15 @@ static int insert_find_test(uint32_t test_size)
             errors++;
         }
 
-        repr_data(res);
-
         const int cmp_res = memcmp(values + i, res, sizeof(user_data_t));
         if (cmp_res != 0)
         {
             errors++;
             outl("found worng value for key '%s'", keys[i]);
+            printf("inserted - ");
+            repr_data(values + i);
+            printf("found - ");
+            repr_data(res);
         }
     }
 
@@ -162,6 +167,8 @@ static int timeseries_test(char* name, unsigned name_len, unsigned test_size)
 
     outl("ts test connected, data generated");
 
+    time_t range_start = time(NULL);
+
     for (unsigned i = 0; i < test_size; i++)
     {
         sleep(1);
@@ -172,11 +179,58 @@ static int timeseries_test(char* name, unsigned name_len, unsigned test_size)
             outl("add problems %d", add_res);
         }
     }
+
+    time_t range_end = time(NULL);
+    user_data_t* buf = malloc(sizeof(user_data_t) * test_size);
+
+    int gr_res = Db2.timeseries_get_range(ts, range_start, range_end, buf);
+    (void)gr_res;
+
+    for (unsigned i = 0; i < test_size; i++)
+    {
+        repr_data(buf + i);
+    }
     
+    free(buf);
     free(entries);
     Db2.stop();
 
     return 0;
+}
+
+int large_value_test(void)
+{
+    const char* path = "/home/dekel/Music/Dive RMIX.wav";
+    struct stat info;
+
+    stat(path, &info);
+
+    int fd = open(path, O_RDONLY, 0444);
+    void* file = mmap(NULL, info.st_size, PROT_READ, MAP_PRIVATE, fd, 0);    
+    close(fd);
+
+    Db2.connect();
+
+    Db2.insert("large value", 12, file, info.st_size);
+
+
+    void* from_db = Db2.find("large value", 12);
+
+
+    if (memcmp(file, from_db, info.st_size) != 0)
+    {
+        outl("found something different than inserted");
+    }
+    else
+    {
+        int outfile = open("outfile.wav", O_CREAT | O_WRONLY , 0222);
+        write(outfile, from_db, info.st_size);
+        close(outfile);
+    }
+
+    munmap(file, info.st_size);
+
+    Db2.stop();
 }
 
 int main(int argc, char const *argv[])
@@ -193,9 +247,11 @@ int main(int argc, char const *argv[])
 
     outl("******* client %s start", msg);
 
-    timeseries_test(msg, msg_len, 3);
+    // timeseries_test(msg, msg_len, 3);
 
-    // insert_find_test(3);
+    // large_value_test();
+
+    insert_find_test(3);
 
     outl("******* client %s end", msg);
 

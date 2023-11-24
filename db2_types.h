@@ -1,10 +1,10 @@
 #ifndef db2_types
 #define db2_types
 
+#include <time.h>
 #include <stdint.h>
 
-typedef enum { op_insert, op_find, op_remove, op_ts_create, op_ts_add, op_ts_get_range } db_op_type_e;
-
+enum db_op_type_e { op_insert, op_find, op_remove, op_ts_create, op_ts_add, op_ts_get_range };
 
 typedef struct
 {
@@ -15,7 +15,7 @@ typedef struct
 typedef struct 
 {
     int _status;
-    char _body[];
+    int _body_size;
 } db_response_t;
 
 typedef struct
@@ -29,40 +29,43 @@ struct db_op_insert_t
 {
     uint32_t _key_size;
     uint32_t _val_size;
+    char pad[16];
 };
 
 struct db_op_remove_t
 {
-    uint32_t _key_size;
-    uint32_t _pad;
+    uint64_t _key_hash;
+    char pad[16];
 };
 
 struct db_op_find_t
 {
-    uint32_t _key_size;
-    uint32_t _pad;
+    uint64_t _key_hash;
+    char pad[16];
 };
 
 struct db_op_ts_create_t
 {
     uint32_t _key_size;
-    uint32_t _pad;
+    char pad[20];
 };
 
 struct db_op_ts_add_t 
 {
     int _ts;
     uint32_t _val_size;
+    char pad[16];
 };
 
 struct db_op_ts_get_range_t
 {
     int _ts;
-    uint32_t _pad;
+    char pad[4];
+    time_t _start;
+    time_t _end;
 };
 
-// insert, remove and find need exactly 8 bytes of body
-// but this will be difficult to keep up
+
 union db_op_header_t 
 {
     struct db_op_insert_t _insert;
@@ -75,10 +78,9 @@ union db_op_header_t
 
 typedef struct
 {
-    db_op_type_e _op;
-    uint32_t _size;
+    enum db_op_type_e _op;
     union db_op_header_t _header;
-    char _body[];
 } db_op_t;
+
 
 #endif // db2_types

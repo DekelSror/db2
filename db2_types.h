@@ -29,42 +29,36 @@ struct db_op_insert_t
 {
     uint32_t _key_size;
     uint32_t _val_size;
-    char pad[16];
+    uint64_t _key_hash;
 };
 
 struct db_op_remove_t
 {
     uint64_t _key_hash;
-    char pad[16];
 };
 
 struct db_op_find_t
 {
     uint64_t _key_hash;
-    char pad[16];
 };
 
 struct db_op_ts_create_t
 {
     uint32_t _key_size;
-    char pad[20];
 };
 
 struct db_op_ts_add_t 
 {
     int _ts;
     uint32_t _val_size;
-    char pad[16];
 };
 
 struct db_op_ts_get_range_t
 {
     int _ts;
-    char pad[4];
     time_t _start;
     time_t _end;
 };
-
 
 union db_op_header_t 
 {

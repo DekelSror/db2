@@ -37,10 +37,7 @@ python3 python_client/driver2.py [msg]
 
 DB parameters (default value)
 - KV_MAX_ENTRIES (256)
-- KV_MAX_ENTRY_SIZE (4k)
 - TS_MAX_TIMESERIES (20)
-- TS_MAX_VALUE_SIZE (?)
-- TS_MAX_NAME_LEN (128)
 
 System resources - 
 1. Memory

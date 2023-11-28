@@ -15,12 +15,13 @@ typedef struct
     //
     int(*insert)(char* key, uint32_t key_len, void* val, uint32_t val_len);
     int(*remove)(char* key, uint32_t key_len);
+    // find allocates memory for the returned value; it is up to the user to free it
     void*(*find)(char* key, uint32_t key_len);
     //
     // timeseries_create will return the descriptor if the series already exists
     db2_ts_descriptor_t(*timeseries_create)(char* key, uint32_t key_len);
     int(*timeseries_add)(db2_ts_descriptor_t ts, void* val, uint32_t val_len);
-    int(*timeseries_get_range)(db2_ts_descriptor_t ts, time_t start, time_t end, void* buf);
+    void*(*timeseries_get_range)(db2_ts_descriptor_t ts, time_t start, time_t end);
 } db2_client_t;
 
 extern const db2_client_t Db2;

@@ -107,7 +107,7 @@ static int handle_client_request(int client)
         return 0;
     }
 
-    outl("recieved %ld bytes from %d", ops_length, client);
+    outl("recieved %ld bytes from %d op %s", ops_length, client, op_names[op._op]);
 
     int op_res = handle_op(&op, client);
     (void)op_res;
@@ -118,46 +118,41 @@ static int handle_client_request(int client)
 static int handle_op(db_op_t* op, int client_index)
 {
     int client_socket = clients[client_index].fd;
-    db_response_t response = { 0 };
+    int res = 0;
 
     switch (op->_op)
     {
     case op_insert: {
-        int res = handle_insert(op, client_socket);
-        response._status = res ? 500 : 200;
+        res = handle_insert(op, client_socket);
         break;
     }
     case op_remove: {
-        handle_remove(op);
-        response._status = 200;
+        handle_remove(op, client_socket);
         break;
     }
     case op_find: {
-        int res = handle_find(op, client_socket);
-        response._status = res ? 404 : 200;
+        res = handle_find(op, client_socket);
         break;
     }
     case op_ts_create: {
-        timeseries_create(op, client_socket);
+        res = timeseries_create(op, client_socket);
         break;
     }
     case op_ts_add: {
-        timeseries_add(op, client_socket);
+        res = timeseries_add(op, client_socket);
         break;
     }
     case op_ts_get_range: {
-        timeseries_get_range(op, client_socket);
+        res = timeseries_get_range(op, client_socket);
         break;
     }
 
     default:
         outl("badly formatted op %d", op->_op);
-        response._status = 500;
         break;
     }
 
-    send(client_socket, &response, sizeof(db_response_t), 0);
-    return 0;
+    return res;
 }
 
 static int next_client_index(void)
@@ -212,6 +207,8 @@ static int setup(void)
         clients[i].fd = -1;
         clients[i].events = 0; // proper setup when connecting
     }
+
+    ts_init_value_buffers();
 
     return 0;
 }

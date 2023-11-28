@@ -183,17 +183,17 @@ static int timeseries_test(char* name, unsigned name_len, unsigned test_size)
     }
 
     time_t range_end = time(NULL);
-    user_data_t* buf = malloc(sizeof(user_data_t) * test_size);
 
-    int gr_res = Db2.timeseries_get_range(ts, range_start, range_end, buf);
-    (void)gr_res;
+    user_data_t* range = (user_data_t*)Db2.timeseries_get_range(ts, range_start, range_end);
 
     for (unsigned i = 0; i < test_size; i++)
     {
-        repr_data(buf + i);
+        repr_data(entries + i);
+        repr_data(range + i);
+        printf("\n\n");
     }
     
-    free(buf);
+    free(range); // ;]
     free(entries);
     Db2.stop();
 
@@ -231,8 +231,11 @@ int large_value_test(void)
     }
 
     munmap(file, info.st_size);
+    free(from_db);
 
     Db2.stop();
+
+    return 0;
 }
 
 int main(int argc, char const *argv[])
@@ -249,11 +252,11 @@ int main(int argc, char const *argv[])
 
     outl("******* client %s start", msg);
 
-    // timeseries_test(msg, msg_len, 3);
+    timeseries_test(msg, msg_len, 3);
 
     // large_value_test();
 
-    insert_find_test(3);
+    // insert_find_test(3);
 
     outl("******* client %s end", msg);
 

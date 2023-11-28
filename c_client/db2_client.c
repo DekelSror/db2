@@ -42,14 +42,12 @@ static int db2_connect(void)
     };
 
     int config = open("../db2_config", O_RDONLY);
-    ssize_t path_read = read(config, server_addr.sun_path, 108);
-    (void)path_read;
+    read(config, server_addr.sun_path, 108);
     client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
     connect(client_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
 
-    ssize_t recvd = recieve_response(&response);
-    (void)recvd;
+    recieve_response(&response);
 
     return response._status;
 }
@@ -57,11 +55,9 @@ static int db2_connect(void)
 static int db2_message(const char* msg, size_t msg_len)
 {
     db_response_t response = { 0 };
-    ssize_t sent =  send(client_socket, msg, msg_len, 0);
-    outl("got %ld for msg '%s'", sent, msg);
+    send(client_socket, msg, msg_len, 0);
 
-    ssize_t recvd = recieve_response(&response);
-    (void)recvd;
+    recieve_response(&response);
 
     return response._status;
 }
@@ -83,20 +79,25 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
     db_op_t op = {
         ._op = op_insert,
         ._header._insert._key_size = key_len,
-        ._header._insert._val_size = val_len
+        ._header._insert._val_size = val_len,
+        ._header._insert._key_hash = db_hash(key, key_len)
     };
+
+    outl("insert op %u %u %lu", op._header._insert._key_size, op._header._insert._val_size, op._header._insert._key_hash);
 
     send_op(&op);
     recieve_response(&response);
-    outl("got ack for insert; starting to send key/value");
+    outl("insert first status %d", response._status);
 
-    ssize_t key_sent = stream_out(client_socket, key, key_len);
-    ssize_t val_sent = stream_out(client_socket, val, val_len);
+    if (response._status == 200)
+    {
+        stream_out(client_socket, key, key_len);
+        stream_out(client_socket, val, val_len);
 
-    ssize_t recvd = recieve_response(&response);
-    (void)recvd;
-    
-    outl("insert status %d", response._status);
+        recieve_response(&response);
+        
+        outl("insert final status %d", response._status);
+    }
 
     return response._status;
 }
@@ -109,11 +110,8 @@ static int db2_remove(char* key, uint32_t key_len)
         ._header._remove._key_hash = db_hash(key, key_len),
     };
 
-    ssize_t sent = send_op(&op);
-    (void)sent;
-
-    ssize_t recvd = recieve_response(&response);
-    (void)recvd;
+    send_op(&op);
+    recieve_response(&response);
 
     return response._status;
 }
@@ -127,19 +125,18 @@ static void* db2_find(char* key, uint32_t key_len)
 
     db_response_t response = { 0 };
 
-    ssize_t sent = send_op(&op);
-    ssize_t recvd = recieve_response(&response);
+    send_op(&op);
+    recieve_response(&response);
     void* found = NULL;
 
     if (response._status == 200)
     {
         found = Mempool.allocate(response._body_size);
         stream_in(client_socket, found, response._body_size);
+        recieve_response(&response);
     }
 
-    recvd = recieve_response(&response);
     return found;
-
 }
 
 
@@ -154,19 +151,21 @@ static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
         ._header._ts_create._key_size = name_len
     };
     
-
-    ssize_t sent = send_op(&op);
-
-    ssize_t recvd = recieve_response(&response);
-    (void)sent;
-    (void)recvd;
-
-
-    stream_out(client_socket, name, name_len);
+    send_op(&op);
+    recieve_response(&response);
 
     db2_ts_descriptor_t ts = -1;
 
-    recv(client_socket, &ts, sizeof(ts), 0);
+    if (response._status == 200) // can create timeseries
+    {
+        stream_out(client_socket, name, name_len);
+        recieve_response(&response);
+
+        if (response._status == 200)
+        {
+            ts = response._body_size; // HACK ALERT!!!
+        }
+    }
     
     return ts;
 }
@@ -181,18 +180,19 @@ static int db2_timeseries_add(db2_ts_descriptor_t ts, void* val, uint32_t val_le
     };
     
     
-    ssize_t sent = send_op(&op);
+    send_op(&op);
+    recieve_response(&response);
 
-    ssize_t recvd = recieve_response(&response);
-    (void)sent;
-    (void)recvd;
-
-    stream_out(client_socket, val, val_len);
+    if (response._status == 200)
+    {
+        stream_out(client_socket, val, val_len);
+        recieve_response(&response);
+    }
 
     return response._status;
 }
 
-static int db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t end, void* buf)
+static void* db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t end)
 {
     db_response_t response = { 0 };
     db_op_t op = {    
@@ -202,18 +202,29 @@ static int db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t
         ._header._ts_get_range._end = end
     };
 
-    ssize_t sent = send_op(&op);
-    
-    ssize_t recvd = recieve_response(&response);
-    (void)sent;
-    (void)recvd;
+    send_op(&op);
+    recieve_response(&response);
+
+    void* result = NULL;
+
+    outl("client ts_get_range initial response %d %d", response._status, response._body_size);
+
     if (response._status == 200)
     {
-        // db_value_t* val = (db_value_t*)response._body;
-        // memmove(buf, val->_val, val->_size);
+        int result_size = response._body_size;
+        result = Mempool.allocate(response._body_size);
+        outl("get_range streaming in the result");
+        stream_in(client_socket, result, response._body_size);
+        outl("get_range got result; waiting for response from server");
+        recieve_response(&response);
+
+        if (response._body_size != result_size)
+        {
+            outl("no good result size no good");
+        }
     }
 
-    return response._status;
+    return result;
 }
 
 const db2_client_t Db2 = {

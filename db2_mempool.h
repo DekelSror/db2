@@ -9,6 +9,7 @@
 
 typedef struct
 {
+    int(*has)(size_t size);
     db_value_t*(*allocate)(size_t size);
     void(*free)(db_value_t*);
     size_t(*heap_size)(void);

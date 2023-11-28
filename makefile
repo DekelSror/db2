@@ -6,7 +6,9 @@ server:
 	rm -rf bin/**
 	mkdir -p bin
 	rm -f $(DB2_SOCKET_PATH)
-	gcc -g -Wextra -Wall -std=c2x utilities.c db2_mempool.c db2_kv.c db2_timeseries.c db2_server.c -o bin/db2.out
+	gcc -g -Wextra -Wall -std=c2x utilities.c db2_mempool.c \
+		db2_kv.c db2_timeseries.c \
+		db2_server.c -o bin/db2.out
 
 
 setup:

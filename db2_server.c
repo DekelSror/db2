@@ -118,41 +118,17 @@ static int handle_client_request(int client)
 static int handle_op(db_op_t* op, int client_index)
 {
     int client_socket = clients[client_index].fd;
-    int res = 0;
 
-    switch (op->_op)
-    {
-    case op_insert: {
-        res = handle_insert(op, client_socket);
-        break;
-    }
-    case op_remove: {
-        handle_remove(op, client_socket);
-        break;
-    }
-    case op_find: {
-        res = handle_find(op, client_socket);
-        break;
-    }
-    case op_ts_create: {
-        res = timeseries_create(op, client_socket);
-        break;
-    }
-    case op_ts_add: {
-        res = timeseries_add(op, client_socket);
-        break;
-    }
-    case op_ts_get_range: {
-        res = timeseries_get_range(op, client_socket);
-        break;
-    }
+    int(*op_handlers[num_ops])(db_op_t*, int) = {
+        [op_insert] = handle_insert,
+        [op_find] = handle_find,
+        [op_remove] = handle_remove,
+        [op_ts_create] = timeseries_create,
+        [op_ts_add] = timeseries_add,
+        [op_ts_get_range] = timeseries_get_range,
+    };
 
-    default:
-        outl("badly formatted op %d", op->_op);
-        break;
-    }
-
-    return res;
+    return op_handlers[op->_op](op, client_socket);
 }
 
 static int next_client_index(void)
@@ -188,9 +164,8 @@ static int setup(void)
     };
 
     int config = open("./db2_config", O_RDONLY);
-    ssize_t path_read = read(config, server_addr.sun_path, 108);
-    (void)path_read;
-
+    read(config, server_addr.sun_path, 108);
+    
     unlink(server_addr.sun_path); // failure does not matter here
 
     server_socket = socket(AF_UNIX, SOCK_STREAM, 0);

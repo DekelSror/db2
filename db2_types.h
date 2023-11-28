@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdint.h>
 
-enum db_op_type_e { op_insert, op_find, op_remove, op_ts_create, op_ts_add, op_ts_get_range };
+enum db_op_type_e { op_insert, op_find, op_remove, op_ts_create, op_ts_add, op_ts_get_range, num_ops };
 
 typedef struct
 {

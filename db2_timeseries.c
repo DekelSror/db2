@@ -45,7 +45,6 @@ static timeseries_t db[20] = { 0 };
 
 static int next_series_index = 0;
 
-
 int timeseries_create(db_op_t* op, int client_socket)
 {
     db_response_t response = { ._status = 200 };
@@ -86,7 +85,7 @@ int timeseries_create(db_op_t* op, int client_socket)
     db[next_series_index]._capacity = 1024;
     db[next_series_index]._size = 0;
 
-    response._body_size = next_series_index;
+    response._body_size = next_series_index; // dark side of the HACK!!!
     send(client_socket, &response, sizeof(db_response_t), 0);
     next_series_index++;
 
@@ -109,7 +108,7 @@ static int add_conditions(int ts_index, uint32_t val_size, time_t add_time)
         return 0;
     }
     
-    if (ts._size > 0 && ts._entries[ts._size]._time >= add_time)
+    if (ts._size > 0 && ts._entries[ts._size - 1]._time >= add_time)
     {
         outl("ts_add cannot add earlier to latest; latest(%ld) - new(%ld) = %ld", 
             ts._entries[ts._size]._time, 
@@ -204,9 +203,12 @@ int timeseries_get_range(db_op_t* op, int client_socket)
         {
             break;
         }
+
         to_send += series._entries[index]._val_size;
         index++;
     }
+
+    to_send += series._entries[index]._val_size;
 
     outl("get_range sending successful response");
     response._body_size = to_send;

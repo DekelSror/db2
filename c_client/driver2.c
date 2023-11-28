@@ -154,11 +154,11 @@ static int insert_find_test(uint32_t test_size)
     return errors;
 }
 
-static int timeseries_test(char* name, unsigned name_len, unsigned test_size)
+static int timeseries_test(char* name, size_t name_len, unsigned test_size)
 {
     Db2.connect();
 
-    int ts = Db2.timeseries_create(name, name_len);
+    int ts = Db2.timeseries_create(name, (uint32_t)name_len);
 
     user_data_t* entries = malloc(sizeof(user_data_t) * test_size);
 
@@ -248,9 +248,9 @@ int main(int argc, char const *argv[])
     }
 
     char const* msg = argv[1];
-    size_t msg_len = strlen(argv[1]);
+    size_t msg_len = strlen(argv[1]) + 1;
 
-    outl("******* client %s start", msg);
+    outl("******* client %s (%lu) start", msg, msg_len);
 
     timeseries_test(msg, msg_len, 3);
 

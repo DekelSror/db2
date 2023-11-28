@@ -17,7 +17,6 @@ static uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
 int handle_insert(db_op_t *op, int client_socket)
 {
     struct db_op_insert_t header = op->_header._insert;
-    outl("insert key_size %u val_size %u", header._key_size, header._val_size);
 
     db_value_t *key_block = (db_value_t *)Mempool.allocate(header._key_size + sizeof(db_value_t));
     key_block->_size = header._key_size;
@@ -36,7 +35,6 @@ int handle_insert(db_op_t *op, int client_socket)
 
     long index = key_hash % db2_num_entries;
     const long init_index = index;
-    outl("handle_insert init index for key '%s' is %ld hash is %lu", key_block->_val, init_index, key_hash);
 
     do
     {
@@ -68,7 +66,6 @@ int handle_insert(db_op_t *op, int client_socket)
         }
     } while (index != init_index);
 
-    outl("handle_insert could not find an index for '%s'", key_block->_val);
     response._status = 404;
     send(client_socket, &response, sizeof(db_response_t), 0);
 
@@ -109,11 +106,8 @@ int handle_find(db_op_t *op, int client_socket)
 
     long index = hash_index(header._key_hash);
 
-    outl("handle_find got hash %lu index %ld", header._key_hash, index);
-
     if (index >= 0)
     {
-        outl("handle_find key is '%s'", db[index]._key->_val);
         db_response_t response = { ._status = 200, ._body_size = db[index]._val->_size };
         send(client_socket, &response, sizeof(db_response_t), 0);
         stream_out(client_socket, db[index]._val->_val, db[index]._val->_size);

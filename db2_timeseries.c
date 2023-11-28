@@ -98,19 +98,19 @@ static int add_conditions(int ts_index, uint32_t val_size, time_t add_time)
     
     if (ts_index >= next_series_index)
     {
-        outl("timeseries %d does not exist", ts_index);
+        outl("ts add error - timeseries %d does not exist", ts_index);
         return 0;
     }
 
     if (ts._size == ts._capacity)
     {
-        outl("ts_add size == capacity for ts '%s'. future - try to allocate more memory", ts._key->_val);
+        outl("ts add error - ts_add size == capacity for ts '%s'. future - try to allocate more memory", ts._key->_val);
         return 0;
     }
     
     if (ts._size > 0 && ts._entries[ts._size - 1]._time >= add_time)
     {
-        outl("ts_add cannot add earlier to latest; latest(%ld) - new(%ld) = %ld", 
+        outl("ts add error - ts_add cannot add earlier to latest; latest(%ld) - new(%ld) = %ld", 
             ts._entries[ts._size]._time, 
             add_time, 
             ts._entries[ts._size]._time - add_time
@@ -119,12 +119,12 @@ static int add_conditions(int ts_index, uint32_t val_size, time_t add_time)
         return 0;
     }
     if (next_series_index < ts_index) {
-        outl("ts_add op has ts %d but ts only has up to %d", ts_index, next_series_index);
+        outl("ts add error - ts_add op has ts %d but ts only has up to %d", ts_index, next_series_index);
         return 0;
     }
     if (value_offsets[ts_index] + val_size > ts_value_start(ts_index + 1))
     {
-        outl("ts_add out of space for values!");
+        outl("ts ad error - ts_add out of space for values!");
         return 0;
     }
 
@@ -137,8 +137,6 @@ int timeseries_add(db_op_t* op, int client_socket)
     time_t add_time = time(NULL);
     struct db_op_ts_add_t header = op->_header._ts_add;
     timeseries_t* ts = db + header._ts;
-
-    outl("timeseries_add called at %ld", add_time);
 
     if (add_conditions(header._ts, header._val_size, add_time))
     {
@@ -177,8 +175,6 @@ int timeseries_get_range(db_op_t* op, int client_socket)
 
     time_t start = header._start;
     time_t end = header._end;
-
-    outl("timeseries_get_range from %ld to %ld range %ld", start, end, end - start);
     
     unsigned index = 0;
 
@@ -210,13 +206,12 @@ int timeseries_get_range(db_op_t* op, int client_socket)
 
     to_send += series._entries[index]._val_size;
 
-    outl("get_range sending successful response");
     response._body_size = to_send;
     send(client_socket, &response, sizeof(db_response_t), 0);
-    outl("get_range streaming out result");
+    
     ssize_t sent = stream_out(client_socket, timeseries_values + series._entries[start_index]._val_offset, to_send);
-    outl("get_range done (200), back to server");
     response._body_size = sent;
+    
     send(client_socket, &response, sizeof(db_response_t), 0);
     
     return 0;

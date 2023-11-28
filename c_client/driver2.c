@@ -254,9 +254,9 @@ int main(int argc, char const *argv[])
 
     timeseries_test(msg, msg_len, 3);
 
-    // large_value_test();
+    large_value_test();
 
-    // insert_find_test(3);
+    insert_find_test(3);
 
     outl("******* client %s end", msg);
 

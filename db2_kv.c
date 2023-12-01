@@ -11,12 +11,25 @@ static db_entry_t db[db2_num_entries] = {0};
 static uint32_t db_size = 0;
 
 static long hash_index(uint64_t hash);
-static uint64_t simple_hash(char *key, uint32_t len);
-static uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
 
 int handle_insert(db_op_t *op, int client_socket)
 {
+    db_response_t response = {._status = 200};
     struct db_op_insert_t header = op->_header._insert;
+
+    if (!Mempool.has(header._key_size + header._val_size + sizeof(db_value_t) * 2))
+    {
+        response._status = 500;
+        send(client_socket, &response, sizeof(db_response_t), 0);
+        return 1;
+    }
+
+    if (db_size == db2_num_entries)
+    {
+        response._status = 500;
+        send(client_socket, &response, sizeof(db_response_t), 0);
+        return 1;
+    }
 
     db_value_t *key_block = (db_value_t *)Mempool.allocate(header._key_size + sizeof(db_value_t));
     key_block->_size = header._key_size;
@@ -24,7 +37,6 @@ int handle_insert(db_op_t *op, int client_socket)
     db_value_t *val_block = (db_value_t *)Mempool.allocate(header._val_size + sizeof(db_value_t));
     val_block->_size = header._val_size;
 
-    db_response_t response = {._status = 200};
     send(client_socket, &response, sizeof(db_response_t), 0);
 
     stream_in(client_socket, key_block->_val, key_block->_size);
@@ -66,7 +78,8 @@ int handle_insert(db_op_t *op, int client_socket)
         }
     } while (index != init_index);
 
-    response._status = 404;
+    outl("this will never be printed?");
+    response._status = 500;
     send(client_socket, &response, sizeof(db_response_t), 0);
 
     return 1;
@@ -143,17 +156,4 @@ static long hash_index(uint64_t hash)
     } while (index != init_index);
 
     return -1;
-}
-
-static uint64_t simple_hash(char *key, uint32_t _len)
-{
-    int len = (int)_len;
-    uint64_t h = 5381;
-
-    for (int i = 0; i < len; i++)
-    {
-        h = (h * 33) + key[i];
-    }
-
-    return h;
 }

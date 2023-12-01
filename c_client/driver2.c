@@ -34,7 +34,7 @@ static void generate_ud(user_data_t* buf)
 
 static uint32_t generate_key(char* buf)
 {
-    uint32_t length = rand() % 5 + 5;
+    uint32_t length = rand() % 5 + 4;
 
     for (size_t i = 0; i < length; i++)
     {
@@ -43,7 +43,7 @@ static uint32_t generate_key(char* buf)
 
     buf[length] = 0;
 
-    return length + 1;
+    return length;
 }
 
 static int message_test(char const* msg, size_t msg_len)
@@ -74,7 +74,7 @@ static int insert_find_test(uint32_t test_size)
     }
 
     user_data_t* values = (user_data_t*)malloc(test_size * sizeof(user_data_t));
-    char** keys = malloc(test_size * sizeof(char*));
+    char** keys = malloc(test_size * 8);
     uint32_t* key_lengths = malloc(test_size * sizeof(uint32_t));
     
     if ((values == NULL) || (keys == NULL) || (key_lengths == NULL))
@@ -238,6 +238,38 @@ int large_value_test(void)
     return 0;
 }
 
+int full_table_test(void)
+{
+    Db2.connect();
+
+    user_data_t entries[0x200] = { 0 };
+    char* keys[0x200] = { 0 };
+    uint32_t key_lengths[0x200] = { 0 };
+    char tmp_key[0x10] = { 0 };
+
+    for (size_t i = 0; i < 0x200; i++)
+    {
+        key_lengths[i] = generate_key(tmp_key);
+        keys[i] = malloc(key_lengths[i]);
+        memmove(keys[i], tmp_key, key_lengths[i]);
+
+        generate_ud(entries + i);
+    }
+
+    for (size_t i = 0; i < 0x200; i++)
+    {
+        int res = Db2.insert(keys[i], key_lengths[i], entries + i, sizeof(user_data_t));
+    }
+
+    for (size_t i = 0; i < 0x200; i++)
+    {
+        free(keys[i]);
+    }
+
+
+    Db2.stop();
+}
+
 int main(int argc, char const *argv[])
 {
     srand(getpid() * time(NULL));
@@ -257,6 +289,8 @@ int main(int argc, char const *argv[])
     large_value_test();
 
     insert_find_test(3);
+
+    // full_table_test();
 
     outl("******* client %s end", msg);
 

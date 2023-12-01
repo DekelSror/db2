@@ -1,5 +1,5 @@
-#ifndef db2_h
-#define db2_h
+#ifndef db2_main_header_h
+#define db2_main_header_h
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,4 +26,4 @@ int timeseries_get_range(db_op_t* op, int client_socket);
 
 
 
-#endif // db2_h
+#endif // db2_main_header_h

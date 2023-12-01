@@ -160,12 +160,9 @@ static int setup(void)
     struct sockaddr_un server_addr = 
     {
         .sun_family = AF_UNIX,
-        .sun_path = "some-default-path",
+        .sun_path = db2_socket_path
     };
 
-    int config = open("./db2_config", O_RDONLY);
-    read(config, server_addr.sun_path, 108);
-    
     unlink(server_addr.sun_path); // failure does not matter here
 
     server_socket = socket(AF_UNIX, SOCK_STREAM, 0);

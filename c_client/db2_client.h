@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
+#include <time.h>
 
 typedef int db2_ts_descriptor_t;
 

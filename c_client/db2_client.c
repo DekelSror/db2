@@ -38,11 +38,9 @@ static int db2_connect(void)
 
     struct sockaddr_un server_addr = { 
         .sun_family = AF_UNIX,
-        .sun_path = "some-default-path"
+        .sun_path = db2_socket_path
     };
 
-    int config = open("../db2_config", O_RDONLY);
-    read(config, server_addr.sun_path, 108);
     client_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 
     connect(client_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));

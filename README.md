@@ -1,10 +1,15 @@
-# Db2 - simple local database
+# Db2 - simple, local database
 
 ## Server
 ```
 make server
 ./bin/db2.out
 ```
+
+Server parameters
+- DB2_MAX_CLIENTS (default 10)
+
+### Features
 
 1. Key-Value
     - insert (key, key_len, val, val_len) - (updates on existing key)
@@ -15,7 +20,6 @@ make server
     - add (descriptor, value)
     - get range (descriptor, start, end)
 
-- set max clients DB2_MAX_CLIENTS (default 10)
 
 ## Clients
 
@@ -35,16 +39,17 @@ python3 python_client/driver2.py [msg]
 ```
 * the msg arg is mandatory
 
-DB parameters (default value)
+DB parameters (default value) - currently fixed values
 - KV_MAX_ENTRIES (256)
 - TS_MAX_TIMESERIES (20)
 
+
 System resources - 
 1. Memory
-    - set max usage DB2_MAX_MEM = amount in MB
+    - DB2_MAX_MEM (1GB)
     
 2. Socket
-    - DB2_SOCKET_PATH ([cwd]/db2_comm)
+    - DB2_SOCKET_PATH (~/.db2/db2_comm)
 
 
 

@@ -1,14 +1,5 @@
 # Db2 - simple, local database
 
-## Server
-```
-make server
-./bin/db2.out
-```
-
-Server parameters
-- DB2_MAX_CLIENTS (default 10)
-
 ### Features
 
 1. Key-Value
@@ -21,7 +12,17 @@ Server parameters
     - get range (descriptor, start, end)
 
 
-## Clients
+### Server
+```
+make server
+./bin/db2.out
+```
+
+Server parameters
+- DB2_MAX_CLIENTS (default 10)
+
+
+### Clients
 
 C client - 
 ```
@@ -44,7 +45,7 @@ DB parameters (default value) - currently fixed values
 - TS_MAX_TIMESERIES (20)
 
 
-System resources - 
+### System resources - 
 1. Memory
     - DB2_MAX_MEM (1GB)
     

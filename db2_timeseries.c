@@ -2,10 +2,28 @@
 #include <sys/socket.h>
 
 #include "utilities.h"
-#include "db2_types.h"
 #include "db2_mempool.h"
 #include "db2.h"
+#include "db2_timeseries.h"
 
+#ifndef db2_internal_timeseries_h
+
+typedef struct 
+{
+    time_t _time;
+    unsigned _val_offset;
+    unsigned _val_size;
+} timeseries_entry_t;
+
+typedef struct
+{
+    db_value_t* _key;
+    unsigned _capacity;
+    unsigned _size;
+    timeseries_entry_t* _entries;
+} timeseries_t;
+
+#endif // db2_internal_timeseries_h
 
 static char timeseries_values[0x100000 * 20] = { 0 };
 
@@ -26,21 +44,6 @@ static uint32_t ts_value_start(int index)
     return 0x100000 * index;
 }
 
-typedef struct 
-{
-    time_t _time;
-    unsigned _val_offset;
-    unsigned _val_size;
-} timeseries_entry_t;
-
-typedef struct
-{
-    db_value_t* _key;
-    unsigned _capacity;
-    unsigned _size;
-    timeseries_entry_t* _entries;
-} timeseries_t;
-
 static timeseries_t db[20] = { 0 };
 
 static int next_series_index = 0;
@@ -54,14 +57,14 @@ int timeseries_create(db_op_t* op, int client_socket)
     {
         response._status = 500;
         outl("already have 20 timeseries");
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         return 1;
     }
 
     db_value_t* key = Mempool.allocate(header._key_size + sizeof(db_value_t));
     key->_size = header._key_size;
 
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
     stream_in(client_socket, key->_val, header._key_size);
 
     for (int i = 0; i < next_series_index; i++)
@@ -71,7 +74,7 @@ int timeseries_create(db_op_t* op, int client_socket)
             Mempool.free(key);
             outl("series '%s' already exists", db[i]._key->_val);
             response._body_size = i;
-            send(client_socket, &response, sizeof(db_response_t), 0);
+            send_response(client_socket, &response);
 
             return 0;
         }
@@ -86,7 +89,7 @@ int timeseries_create(db_op_t* op, int client_socket)
     db[next_series_index]._size = 0;
 
     response._body_size = next_series_index; // dark side of the HACK!!!
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
     next_series_index++;
 
     return 0;
@@ -140,7 +143,7 @@ int timeseries_add(db_op_t* op, int client_socket)
 
     if (add_conditions(header._ts, header._val_size, add_time))
     {
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         
         ts->_entries[ts->_size]._time = add_time;
         ts->_entries[ts->_size]._val_offset =  value_offsets[header._ts];
@@ -150,13 +153,13 @@ int timeseries_add(db_op_t* op, int client_socket)
         value_offsets[header._ts] += header._val_size;
 
         ts->_size++;
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         return 0;
     } 
     else
     {
         response._status = 500;
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         return 1;
     }
 }
@@ -183,7 +186,7 @@ int timeseries_get_range(db_op_t* op, int client_socket)
         if (index == series._size)
         {
             response._status = 404;
-            send(client_socket, &response, sizeof(db_response_t), 0);
+            send_response(client_socket, &response);
             return 1;
         }
 
@@ -207,12 +210,12 @@ int timeseries_get_range(db_op_t* op, int client_socket)
     to_send += series._entries[index]._val_size;
 
     response._body_size = to_send;
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
     
     ssize_t sent = stream_out(client_socket, timeseries_values + series._entries[start_index]._val_offset, to_send);
     response._body_size = sent;
     
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
     
     return 0;
 }

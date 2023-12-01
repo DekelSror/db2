@@ -36,3 +36,8 @@ int stream_out(int socket, const char* data, ssize_t size)
 
     return transferred == size;
 }
+
+ssize_t send_response(int client_socket, db_response_t* response)
+{
+    return send(client_socket, response, sizeof(db_response_t), 0);
+}

@@ -20,14 +20,14 @@ int handle_insert(db_op_t *op, int client_socket)
     if (!Mempool.has(header._key_size + header._val_size + sizeof(db_value_t) * 2))
     {
         response._status = 500;
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         return 1;
     }
 
     if (db_size == db2_num_entries)
     {
         response._status = 500;
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         return 1;
     }
 
@@ -37,7 +37,7 @@ int handle_insert(db_op_t *op, int client_socket)
     db_value_t *val_block = (db_value_t *)Mempool.allocate(header._val_size + sizeof(db_value_t));
     val_block->_size = header._val_size;
 
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
 
     stream_in(client_socket, key_block->_val, key_block->_size);
     stream_in(client_socket, val_block->_val, val_block->_size);
@@ -67,7 +67,7 @@ int handle_insert(db_op_t *op, int client_socket)
 
             db_size++;
 
-            send(client_socket, &response, sizeof(db_response_t), 0);
+            send_response(client_socket, &response);
             return 0;
         }
 
@@ -80,7 +80,7 @@ int handle_insert(db_op_t *op, int client_socket)
 
     outl("this will never be printed?");
     response._status = 500;
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
 
     return 1;
 }
@@ -107,7 +107,7 @@ int handle_remove(db_op_t *op, int client_socket)
         response._status = 500;
     }
 
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
 
     return 0;
 }
@@ -122,14 +122,14 @@ int handle_find(db_op_t *op, int client_socket)
     if (index >= 0)
     {
         db_response_t response = { ._status = 200, ._body_size = db[index]._val->_size };
-        send(client_socket, &response, sizeof(db_response_t), 0);
+        send_response(client_socket, &response);
         stream_out(client_socket, db[index]._val->_val, db[index]._val->_size);
     }
     else
     {
         response._status = 404;
     }
-    send(client_socket, &response, sizeof(db_response_t), 0);
+    send_response(client_socket, &response);
 
     return response._status != 200;
 }

@@ -6,10 +6,6 @@
 #include "db2.h"
 #include "db2_timeseries.h"
 
-#ifndef db2_internal_timeseries_h
-
-#endif // db2_internal_timeseries_h
-
 static char timeseries_values[0x100000 * 20] = { 0 };
 
 static unsigned value_offsets[20] = { 0 };

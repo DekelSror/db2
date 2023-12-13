@@ -6,38 +6,50 @@
 #include "db2.h"
 #include "db2_timeseries.h"
 
-static char timeseries_values[0x100000 * 20] = { 0 };
 
-static unsigned value_offsets[20] = { 0 };
-
-int ts_init_value_buffers(void)
+typedef struct
 {
-    for (int i = 0; i < 20; i++)
-    {
-        value_offsets[i] = i * 0x100000;
-    }
-    
-    return 0;
-}
+    db_value_t* _key;
+    unsigned _size;
+    timeseries_entry_t _entries[db2_max_timeseries_entries];
+} timeseries_t;
 
-static uint32_t ts_value_start(int index)
+struct db2_ts_range_params_t
 {
-    return 0x100000 * index;
-}
+    uint32_t _start_index;
+    uint32_t _end_index;
+};
 
-static timeseries_t db[20] = { 0 };
+static struct db2_ts_range_params_t range_params(db2_ts_descriptor_t ts, db2_time_t start, db2_time_t end);
+static double ts_sum_params(db2_ts_descriptor_t ts, struct db2_ts_range_params_t params);
 
+struct numeric_ts_agg_t
+{
+    char* _name;
+    unsigned _num_entries;
+    time_t _start;
+    time_t _end;
+    double _min;
+    double _max;
+    double _sum;
+    double _avg;
+    double _median
+};
+
+
+static timeseries_t db[db2_max_timeseries] = { 0 };
 static int next_series_index = 0;
+
 
 int timeseries_create(db_op_t* op, int client_socket)
 {
     db_response_t response = { ._status = 200 };
     struct db_op_ts_create_t header = op->_header._ts_create;
 
-    if (next_series_index == 20)
+    if (next_series_index == db2_max_timeseries)
     {
         response._status = 500;
-        outl("already have 20 timeseries");
+        outl("already have %d timeseries", db2_max_timeseries);
         send_response(client_socket, &response);
         return 1;
     }
@@ -65,8 +77,6 @@ int timeseries_create(db_op_t* op, int client_socket)
 
     outl("creating timeseries '%s' index %d", key->_val, next_series_index);
 
-    db[next_series_index]._entries = (timeseries_entry_t*)Mempool.allocate(sizeof(timeseries_entry_t) * 1024);
-    db[next_series_index]._capacity = 1024;
     db[next_series_index]._size = 0;
 
     response._body_size = next_series_index; // dark side of the HACK!!!
@@ -76,127 +86,161 @@ int timeseries_create(db_op_t* op, int client_socket)
     return 0;
 }
 
-static int add_conditions(int ts_index, uint32_t val_size, time_t add_time)
-{
-    timeseries_t ts = db[ts_index];
-    
-    if (ts_index >= next_series_index)
-    {
-        outl("ts add error - timeseries %d does not exist", ts_index);
-        return 0;
-    }
-
-    if (ts._size == ts._capacity)
-    {
-        outl("ts add error - ts_add size == capacity for ts '%s'. future - try to allocate more memory", ts._key->_val);
-        return 0;
-    }
-    
-    if (ts._size > 0 && ts._entries[ts._size - 1]._time >= add_time)
-    {
-        outl("ts add error - ts_add cannot add earlier to latest; latest(%ld) - new(%ld) = %ld", 
-            ts._entries[ts._size]._time, 
-            add_time, 
-            ts._entries[ts._size]._time - add_time
-        );
-
-        return 0;
-    }
-    if (next_series_index < ts_index) {
-        outl("ts add error - ts_add op has ts %d but ts only has up to %d", ts_index, next_series_index);
-        return 0;
-    }
-    if (value_offsets[ts_index] + val_size > ts_value_start(ts_index + 1))
-    {
-        outl("ts ad error - ts_add out of space for values!");
-        return 0;
-    }
-
-    return 1;
-}
-
 int timeseries_add(db_op_t* op, int client_socket)
 {
     db_response_t response = { ._status = 200 };
-    time_t add_time = time(NULL);
     struct db_op_ts_add_t header = op->_header._ts_add;
     timeseries_t* ts = db + header._ts;
 
-    if (add_conditions(header._ts, header._val_size, add_time))
+    db2_time_t add_time = db2_now();
+
+    int can_add = header._ts < next_series_index; 
+    can_add = can_add && db[header._ts]._size < db2_max_timeseries_entries;
+
+    if (can_add)
     {
-        send_response(client_socket, &response);
-        
         ts->_entries[ts->_size]._time = add_time;
-        ts->_entries[ts->_size]._val_offset =  value_offsets[header._ts];
-        ts->_entries[ts->_size]._val_size = header._val_size;
-
-        stream_in(client_socket, timeseries_values + value_offsets[header._ts], header._val_size);
-        value_offsets[header._ts] += header._val_size;
-
+        ts->_entries[ts->_size]._val = header._val;
         ts->_size++;
-        send_response(client_socket, &response);
-        return 0;
     } 
     else
     {
         response._status = 500;
-        send_response(client_socket, &response);
-        return 1;
     }
+
+    send_response(client_socket, &response);
+
+    return !(response._status == 200);
+}
+
+db2_time_t timeseries_end(db_op_t* op)
+{
+    struct db_op_ts_add_t header = op->_header._ts_add;
+
+    return db[header._ts]._entries[0]._time;   
+}
+
+db2_time_t timeseries_end(db_op_t* op)
+{
+    struct db_op_ts_add_t header = op->_header._ts_add;
+
+    return db[header._ts]._entries[db[header._ts]._size - 1]._time;   
 }
 
 int timeseries_get_range(db_op_t* op, int client_socket)
 {
-
     db_response_t response = { ._status = 200 };
+
     struct db_op_ts_get_range_t header = op->_header._ts_get_range;
-    if (header._ts == next_series_index)
+    struct db2_ts_range_params_t params = range_params(header._ts, header._start, header._end);
+
+    if (params._end_index == params._start_index)
     {
-        return 1;
-    }
-    
-    timeseries_t series = db[header._ts];
-
-    time_t start = header._start;
-    time_t end = header._end;
-    
-    unsigned index = 0;
-
-    while (series._entries[index]._time < start)
-    {
-        if (index == series._size)
-        {
-            response._status = 404;
-            send_response(client_socket, &response);
-            return 1;
-        }
-
-        index++;
+        response._status = 404;
+        send_response(client_socket, &response);
     }
 
-    unsigned start_index = index;
-    unsigned to_send = 0;
-
-    while (series._entries[index]._time < end)
-    {
-        if (index == series._size)
-        {
-            break;
-        }
-
-        to_send += series._entries[index]._val_size;
-        index++;
-    }
-
-    to_send += series._entries[index]._val_size;
-
-    response._body_size = to_send;
+    response._body_size = (params._end_index - params._start_index) * sizeof(timeseries_entry_t);
     send_response(client_socket, &response);
     
-    ssize_t sent = stream_out(client_socket, timeseries_values + series._entries[start_index]._val_offset, to_send);
+    ssize_t sent = stream_out(client_socket, db[header._ts]._entries + params._start_index, response._body_size);
     response._body_size = sent;
     
     send_response(client_socket, &response);
+}
+
+
+int timeseries_sum(db_op_t* op, int client_socket)
+{
+    struct db_op_ts_get_range_t header = op->_header._ts_get_range;
+    struct db2_ts_range_params_t params = range_params(header._ts, header._start, header._end);
+
+    return ts_sum_params(header._ts, params);
+}
+
+static double ts_sum_params(db2_ts_descriptor_t ts, struct db2_ts_range_params_t params)
+{
+    double sum = 0.0;
+    for (uint32_t i = params._start_index; i < params._end_index + 1; i++)
+    {
+        sum += db[ts]._entries[i]._val;
+    }
+
+    return sum;
+}
+
+
+int db2_numeric_ts_avg(db_op_t* op, int client_socket)
+{
+    struct db_op_ts_get_range_t header = op->_header._ts_get_range;
+    struct db2_ts_range_params_t params = range_params(header._ts, header._start, header._end);
     
-    return 0;
+    return ts_sum_params(header._ts, params) / (params._end_index - params._start_index);
+}
+
+
+double max(void)
+{
+    return 0.0;
+}
+
+
+double min(void)
+{
+    return 0.0;
+}
+
+int map()
+{
+
+}
+
+// ._start_index == ._end_index on result means failure for now
+static struct db2_ts_range_params_t range_params(db2_ts_descriptor_t ts, db2_time_t start, db2_time_t end)
+{
+    timeseries_t series = db[ts];
+
+    struct db2_ts_range_params_t res = { 0 };
+    if (start > series._entries[series._size - 1]._time)
+    {
+        return res;
+    }
+
+    uint32_t left = 0;
+    uint32_t right = series._size;
+
+    while (left < right)
+    {
+        uint32_t mid = left + (right - left) / 2;
+        uint64_t entry_time = series._entries[mid]._time;
+        if (entry_time >= start)
+        {
+            res._start_index = mid;
+            break;
+        }
+        else
+        {
+            left = mid + 1;
+        }
+    }
+
+    left = res._start_index;
+
+    while (left < right)
+    {
+        uint32_t mid = left + (right - left) / 2;
+        uint64_t entry_time = series._entries[mid]._time;
+        
+        if (entry_time >= end)
+        {
+            res._end_index = mid;
+            break;
+        }
+        else
+        {
+            right = mid - 1;
+        }
+    }
+
+    return res;
 }

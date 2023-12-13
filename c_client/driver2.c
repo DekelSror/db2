@@ -154,27 +154,33 @@ static int insert_find_test(uint32_t test_size)
     return errors;
 }
 
+double drand(void)
+{
+    return (double)(((long)rand() << 32) | rand());
+}
+
 static int timeseries_test(char* name, size_t name_len, unsigned test_size)
 {
     Db2.connect();
+    srand(7);
 
     int ts = Db2.timeseries_create(name, (uint32_t)name_len);
+    double* values = malloc(test_size * sizeof(double));
 
-    user_data_t* entries = malloc(sizeof(user_data_t) * test_size);
-
-    for (unsigned i = 0; i < test_size; i++)
+    for (int i = 0; i < test_size; i++)
     {
-        generate_ud(entries + i);
+        values[i] = drand();
     }
+    
 
-    outl("ts test connected, data generated");
+    outl("ts test connected");
 
-    time_t range_start = time(NULL);
 
     for (unsigned i = 0; i < test_size; i++)
     {
-        sleep(1);
-        int add_res = Db2.timeseries_add(ts, entries + i, sizeof(user_data_t));
+        usleep(30 * 1000); // hopefully every 30ms
+        
+        int add_res = Db2.timeseries_add(ts, values[i]);
 
         if (add_res != 200)
         {
@@ -182,19 +188,18 @@ static int timeseries_test(char* name, size_t name_len, unsigned test_size)
         }
     }
 
-    time_t range_end = time(NULL);
+    db2_time_t range_start = Db2.timeseries_start(ts);
+    db2_time_t range_end = Db2.timeseries_end(ts);
 
-    user_data_t* range = (user_data_t*)Db2.timeseries_get_range(ts, range_start, range_end);
+    timeseries_entry_t* range = Db2.timeseries_get_range(ts, range_start, range_end);
 
     for (unsigned i = 0; i < test_size; i++)
     {
-        repr_data(entries + i);
-        repr_data(range + i);
         printf("\n\n");
     }
     
     free(range); // ;]
-    free(entries);
+    free(values);
     Db2.stop();
 
     return 0;

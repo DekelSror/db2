@@ -4,7 +4,25 @@
 #include <time.h>
 #include <stdint.h>
 
-enum db_op_type_e { op_insert, op_find, op_remove, op_ts_create, op_ts_add, op_ts_get_range, num_ops };
+struct db_op_types 
+{
+    int _insert;
+    int _find;
+    int _remove;
+    int _ts_create;
+    int _ts_add;
+    int _ts_get_range;
+    int _num_ops;
+} Db2OpTypes = 
+{
+    ._insert = 0,
+    ._find = 1,
+    ._remove = 2,
+    ._ts_create = 3,
+    ._ts_add = 4,
+    ._ts_get_range = 5,
+    ._num_ops = 6
+};
 
 typedef struct
 {
@@ -17,6 +35,12 @@ typedef struct
     int _status;
     int _body_size;
 } db_response_t;
+
+struct db_ts_create_response
+{
+    int _status;
+    
+};
 
 typedef struct
 {
@@ -50,7 +74,7 @@ struct db_op_ts_create_t
 struct db_op_ts_add_t 
 {
     int _ts;
-    uint32_t _val_size;
+    double _val;
 };
 
 struct db_op_ts_get_range_t
@@ -72,7 +96,7 @@ union db_op_header_t
 
 typedef struct
 {
-    enum db_op_type_e _op;
+    int _op;
     union db_op_header_t _header;
 } db_op_t;
 

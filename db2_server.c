@@ -119,15 +119,15 @@ static int handle_op(db_op_t* op, int client_index)
 {
     int client_socket = clients[client_index].fd;
 
-    int(*op_handlers[num_ops])(db_op_t*, int) = {
-        [op_insert] = handle_insert,
-        [op_find] = handle_find,
-        [op_remove] = handle_remove,
-        [op_ts_create] = timeseries_create,
-        [op_ts_add] = timeseries_add,
-        [op_ts_get_range] = timeseries_get_range,
-    };
+    int(*op_handlers[Db2OpTypes._num_ops])(db_op_t*, int);
 
+    op_handlers[Db2OpTypes._insert] = handle_insert;
+    op_handlers[Db2OpTypes._find] = handle_find;
+    op_handlers[Db2OpTypes._remove] = handle_remove;
+    op_handlers[Db2OpTypes._ts_create] = timeseries_create;
+    op_handlers[Db2OpTypes._ts_add] = timeseries_add;
+    op_handlers[Db2OpTypes._ts_get_range] = timeseries_get_range;
+    
     return op_handlers[op->_op](op, client_socket);
 }
 

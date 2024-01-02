@@ -9,13 +9,12 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-
-#include "db2_mempool.h"
-#include "utilities.h"
+#include "db2_mempool.h" // Mempool
+#include "utilities.h" // stream_in stream_out
 #include "db2_types.h"
 #include "db2_client.h"
 
-#define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+
 static uint64_t simple_hash(char *key, uint32_t len);
 uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
 
@@ -50,19 +49,10 @@ static int db2_connect(void)
     return response._status;
 }
 
-static int db2_message(const char* msg, size_t msg_len)
-{
-    db_response_t response = { 0 };
-    send(client_socket, msg, msg_len, 0);
-
-    recieve_response(&response);
-
-    return response._status;
-}
-
 static void db2_stop(void)
 {
     close(client_socket);
+    client_socket = -1;
 }
 
 // kv
@@ -75,7 +65,7 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
     outl("insert key '%s' start", key);
 
     db_op_t op = {
-        ._op = op_insert,
+        ._op = Db2OpTypes._insert,
         ._header._insert._key_size = key_len,
         ._header._insert._val_size = val_len,
         ._header._insert._key_hash = db_hash(key, key_len)
@@ -104,7 +94,7 @@ static int db2_remove(char* key, uint32_t key_len)
 {
     db_response_t response = { 0 };
     db_op_t op = {
-        ._op = op_remove,
+        ._op = Db2OpTypes._remove,
         ._header._remove._key_hash = db_hash(key, key_len),
     };
 
@@ -117,7 +107,7 @@ static int db2_remove(char* key, uint32_t key_len)
 static void* db2_find(char* key, uint32_t key_len)
 {
     db_op_t op = {
-        ._op = op_find,
+        ._op = Db2OpTypes._find,
         ._header._find._key_hash = db_hash(key, key_len)
     };
 
@@ -142,59 +132,86 @@ static void* db2_find(char* key, uint32_t key_len)
 
 static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
 {
-    db_response_t response = { 0 };
+    struct db_ts_create_response response = { 0 };
 
     db_op_t op = {
-        ._op = op_ts_create,
+        ._op = Db2OpTypes._ts_create,
         ._header._ts_create._key_size = name_len
     };
     
     send_op(&op);
-    recieve_response(&response);
-
-    db2_ts_descriptor_t ts = -1;
+    recieve_response((db_response_t*)(&response));
 
     if (response._status == 200) // can create timeseries
     {
         stream_out(client_socket, name, name_len);
-        recieve_response(&response);
+        recieve_response((db_response_t*)(&response));
 
         if (response._status == 200)
         {
-            ts = response._body_size; // HACK ALERT!!!
+            return response._ts;
         }
     }
     
-    return ts;
+    return -1;
 }
 
-static int db2_timeseries_add(db2_ts_descriptor_t ts, void* val, uint32_t val_len)
+static int db2_timeseries_add(db2_ts_descriptor_t ts, double val)
 {
+    
     db_response_t response = { 0 };
     db_op_t op = {
-        ._op = op_ts_add,
-        ._header._ts_add._val_size = val_len,
+        ._op = Db2OpTypes._ts_add,
         ._header._ts_add._ts = ts,
+        ._header._ts_add._val = val
     };
-    
-    
+
     send_op(&op);
     recieve_response(&response);
-
-    if (response._status == 200)
-    {
-        stream_out(client_socket, val, val_len);
-        recieve_response(&response);
-    }
-
+    
     return response._status;
 }
 
-static void* db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time_t end)
+static db2_time_t db2_timeseries_start_end(db2_ts_descriptor_t ts, int type)
+{
+    struct {
+        int _status;
+        db2_time_t _time;
+    } response = { 0 };
+
+    db_op_t op = {
+        ._op = Db2OpTypes._ts_start_end,
+        ._header._ts_start_end._ts = ts,
+        ._header._ts_start_end._type = type
+    };
+
+    send_op(&op);
+    recv(client_socket, &response, sizeof(response), 0);
+
+    if (response._status == 200)
+    {
+        return response._time;
+    }
+    
+    return -1;
+}
+
+static db2_time_t db2_timeseries_start(db2_ts_descriptor_t ts)
+{
+    return db2_timeseries_start_end(ts, 0);
+}
+
+static db2_time_t db2_timeseries_end(db2_ts_descriptor_t ts)
+{
+    return db2_timeseries_start_end(ts, 1);
+    
+}
+
+static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_time_t start, db2_time_t end)
 {
     db_response_t response = { 0 };
     db_op_t op = {    
-        ._op = op_ts_get_range,
+        ._op = Db2OpTypes._ts_get_range,
         ._header._ts_get_range._ts = ts,
         ._header._ts_get_range._start = start,
         ._header._ts_get_range._end = end
@@ -225,16 +242,63 @@ static void* db2_timeseries_get_range(db2_ts_descriptor_t ts, time_t start, time
     return result;
 }
 
-const db2_client_t Db2 = {
+double db2_nts_sum(db2_ts_descriptor_t ts, time_t start, time_t end)
+{
+    db_response_t response = { 0 };
+    db_op_t op = {
+        ._op = Db2OpTypes._ts_get_range,
+        ._header._ts_get_range._ts = ts,
+        ._header._ts_get_range._start = start,
+        ._header._ts_get_range._end = end
+    };
+
+    send_op(&op);
+    recieve_response(&response);
+
+    double res = 0.0;
+    if (response._status == 200)
+    {
+        stream_in(client_socket, (char*)(&res), sizeof(res));
+    }
+
+    return res;
+}
+
+
+double db2_nts_avg(db2_ts_descriptor_t ts, time_t start, time_t end)
+{
+    db_response_t response = { 0 };
+    db_op_t op = {
+        ._op = Db2OpTypes._ts_get_range,
+        ._header._ts_get_range._ts = ts,
+        ._header._ts_get_range._start = start,
+        ._header._ts_get_range._end = end
+    };
+
+    send_op(&op);
+    recieve_response(&response);
+
+    double res = 0.0;
+    if (response._status == 200)
+    {
+        stream_in(client_socket, (char*)(&res), sizeof(res));
+
+    }
+
+    return res;
+}
+
+const struct db2_client_t Db2 = {
     .connect = db2_connect,
     .stop = db2_stop,
     .find = db2_find,
     .insert = db2_insert,
     .remove = db2_remove,
-    .message = db2_message,
     .timeseries_create = db2_timeseries_create,
     .timeseries_add = db2_timeseries_add,
-    .timeseries_get_range = db2_timeseries_get_range
+    .timeseries_get_range = db2_timeseries_get_range,
+    .timeseries_start = db2_timeseries_start,
+    .timeseries_end = db2_timeseries_end
 };
 
 static uint64_t simple_hash(char *key, uint32_t _len)

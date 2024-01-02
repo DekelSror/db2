@@ -1,21 +1,21 @@
-#ifndef db2_internal_timeseries_h
-#define db2_internal_timeseries_h
+#ifndef db2_timeseries_h
+#define db2_timeseries_h
 
 #include "db2_types.h"
+#include "db2_types.h"
+#include "db2_time.h"
 
+#define db2_max_timeseries (20)
+#define db2_max_timeseries_entries (0x1000)
+
+#ifndef timeseries_entry_t
 typedef struct 
 {
-    time_t _time;
-    unsigned _val_offset;
-    unsigned _val_size;
+    db2_time_t _time;
+    double _val;
 } timeseries_entry_t;
+#endif
 
-typedef struct
-{
-    db_value_t* _key;
-    unsigned _capacity;
-    unsigned _size;
-    timeseries_entry_t* _entries;
-} timeseries_t;
 
-#endif // db2_internal_timeseries_h
+
+#endif // db2_timeseries_h

@@ -33,7 +33,7 @@ struct numeric_ts_agg_t
     double _max;
     double _sum;
     double _avg;
-    double _median
+    double _median;
 };
 
 
@@ -113,18 +113,21 @@ int timeseries_add(db_op_t* op, int client_socket)
     return !(response._status == 200);
 }
 
-db2_time_t timeseries_end(db_op_t* op)
+int timeseries_start_end(db_op_t* op, int client_socket)
 {
-    struct db_op_ts_add_t header = op->_header._ts_add;
+    struct db_op_ts_start_end_t header = op->_header._ts_start_end;
 
-    return db[header._ts]._entries[0]._time;   
-}
+    struct {
+        int _status;
+        db2_time_t _time;
+    } response = {
+        ._status = 200,
+        ._time = db[header._ts]._entries[0]._time
+    };
+    send(client_socket, &response, sizeof(response), 0);
 
-db2_time_t timeseries_end(db_op_t* op)
-{
-    struct db_op_ts_add_t header = op->_header._ts_add;
 
-    return db[header._ts]._entries[db[header._ts]._size - 1]._time;   
+    return 200;
 }
 
 int timeseries_get_range(db_op_t* op, int client_socket)
@@ -138,6 +141,8 @@ int timeseries_get_range(db_op_t* op, int client_socket)
     {
         response._status = 404;
         send_response(client_socket, &response);
+
+        return 1;
     }
 
     response._body_size = (params._end_index - params._start_index) * sizeof(timeseries_entry_t);
@@ -147,6 +152,7 @@ int timeseries_get_range(db_op_t* op, int client_socket)
     response._body_size = sent;
     
     send_response(client_socket, &response);
+    return 0;
 }
 
 
@@ -192,7 +198,7 @@ double min(void)
 
 int map()
 {
-
+    return 0;
 }
 
 // ._start_index == ._end_index on result means failure for now

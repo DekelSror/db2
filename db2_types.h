@@ -1,8 +1,13 @@
 #ifndef db2_types
 #define db2_types
 
-#include <time.h>
 #include <stdint.h>
+#include "db2_time.h"
+
+// db2_types - common types for server and client
+
+typedef int db2_ts_descriptor_t;
+
 
 struct db_op_types 
 {
@@ -12,17 +17,11 @@ struct db_op_types
     int _ts_create;
     int _ts_add;
     int _ts_get_range;
+    int _ts_start_end;
     int _num_ops;
-} Db2OpTypes = 
-{
-    ._insert = 0,
-    ._find = 1,
-    ._remove = 2,
-    ._ts_create = 3,
-    ._ts_add = 4,
-    ._ts_get_range = 5,
-    ._num_ops = 6
 };
+
+extern const struct db_op_types Db2OpTypes;
 
 typedef struct
 {
@@ -39,7 +38,7 @@ typedef struct
 struct db_ts_create_response
 {
     int _status;
-    
+    db2_ts_descriptor_t _ts;
 };
 
 typedef struct
@@ -80,8 +79,14 @@ struct db_op_ts_add_t
 struct db_op_ts_get_range_t
 {
     int _ts;
-    time_t _start;
-    time_t _end;
+    db2_time_t _start;
+    db2_time_t _end;
+};
+
+struct db_op_ts_start_end_t
+{
+    int _ts;
+    int _type; // 0 start, 1 end
 };
 
 union db_op_header_t 
@@ -92,6 +97,7 @@ union db_op_header_t
     struct db_op_ts_create_t _ts_create;
     struct db_op_ts_add_t _ts_add;
     struct db_op_ts_get_range_t _ts_get_range;
+    struct db_op_ts_start_end_t _ts_start_end;
 };
 
 typedef struct

@@ -23,7 +23,7 @@ static int handle_connection(void);
 static int server_socket = -1;
 static struct pollfd clients[max_clients] = { 0 };
 
-static const char* op_names[] = {"kv_insert", "kv_find", "kv_remove", "ts_create", "ts_add", "ts_get_range"};
+static const char* op_names[] = {"kv_insert", "kv_find", "kv_remove", "ts_create", "ts_add", "ts_get_range", "ts_start_end"};
 
 
 int main(void)
@@ -127,6 +127,7 @@ static int handle_op(db_op_t* op, int client_index)
     op_handlers[Db2OpTypes._ts_create] = timeseries_create;
     op_handlers[Db2OpTypes._ts_add] = timeseries_add;
     op_handlers[Db2OpTypes._ts_get_range] = timeseries_get_range;
+    op_handlers[Db2OpTypes._ts_start_end] = timeseries_start_end;
     
     return op_handlers[op->_op](op, client_socket);
 }
@@ -179,8 +180,6 @@ static int setup(void)
         clients[i].fd = -1;
         clients[i].events = 0; // proper setup when connecting
     }
-
-    ts_init_value_buffers();
 
     return 0;
 }

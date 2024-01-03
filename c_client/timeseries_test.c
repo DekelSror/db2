@@ -29,7 +29,8 @@ int timeseries_test(char* name, size_t name_len, unsigned test_size)
 
     for (unsigned i = 0; i < test_size; i++)
     {
-        usleep(30 * 1000); // hopefully every 30ms
+        sleep(1);
+        // usleep(30 * 1000); // hopefully every 30ms
         
         int add_res = Db2.timeseries_add(ts, values[i]);
 
@@ -46,7 +47,10 @@ int timeseries_test(char* name, size_t name_len, unsigned test_size)
 
     for (unsigned i = 0; i < test_size; i++)
     {
-        printf("\n\n");
+        if (values[i] != range[i]._val)
+        {
+            outl("value mismatch! inserted %lf got %lf", values[i], range[i]._val);
+        }
     }
     
     free(range); // ;]

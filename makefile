@@ -2,6 +2,8 @@
 
 HOME=$(shell echo ~)
 
+# _POSIX_C_SOURCE is for nanoseconds time API (timespec, clock_gettime ...) used in db2_time
+
 server:
 	rm -rf bin/db2.out
 	mkdir -p bin
@@ -14,5 +16,4 @@ server:
 		-o bin/db2.out \
 		-Ddb2_socket_path='"$(HOME)/.db2/db2_comm"' \
 		-D_POSIX_C_SOURCE=200809L \
-		-D__USE_MISC=1 \
 		-I. -I./db2_time

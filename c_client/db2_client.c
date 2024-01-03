@@ -1,4 +1,3 @@
-
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/types.h>
@@ -235,7 +234,7 @@ static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_
 
         if (response._body_size != result_size)
         {
-            outl("no good result size no good");
+            outl("no good result size no good had %d got %d", result_size, response._body_size);
         }
     }
 

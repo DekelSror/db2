@@ -19,7 +19,7 @@ int insert_find_test(uint32_t test_size)
     }
 
     user_data_t* values = (user_data_t*)malloc(test_size * sizeof(user_data_t));
-    char** keys = malloc(test_size * 8);
+    char** keys = malloc(test_size * 16);
     uint32_t* key_lengths = malloc(test_size * sizeof(uint32_t));
     
     if ((values == NULL) || (keys == NULL) || (key_lengths == NULL))
@@ -119,7 +119,7 @@ uint32_t generate_key(char* buf)
 
     buf[length] = 0;
 
-    return length;
+    return length + 1;
 }
 
 

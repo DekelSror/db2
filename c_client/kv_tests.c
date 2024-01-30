@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "db2_client.h"
+#include "utilities.h"
 #include "driver2.h"
 
 static void repr_udata(user_data_t* ud)

@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdio.h>
 
-#include "db2_common_types.h"
+#include "db2_types.h"
 
 struct db2_client_t
 {

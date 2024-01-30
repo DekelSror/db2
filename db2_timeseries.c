@@ -21,15 +21,15 @@ int timeseries_can_create(struct db_op_ts_create_t header)
 
     if (next_series_index == db2_max_timeseries)
     {
-        return 1;
+        return 0;
     }
 
     if (!Mempool.has(header._key_size))
     {
-        return 1;
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 
@@ -80,15 +80,12 @@ int timeseries_add(struct db_op_ts_add_t header)
     return can_add;
 }
 
-
-int timeseries_start_end(struct db_op_ts_start_end_t header)
+db2_time_t timeseries_start_end(struct db_op_ts_start_end_t header)
 {
     return header._type == 0 ? 
         db[header._ts]._entries[0]._time : 
         db[header._ts]._entries[db[header._ts]._size - 1]._time;
 }
-
-
 
 struct ts_slice_t timeseries_get_range(struct db_op_ts_get_range_t header)
 {
@@ -146,6 +143,5 @@ static struct ts_range_t ts_range_params(struct db_op_ts_get_range_t header)
         index++;
     }
     
-
     return res;
 }

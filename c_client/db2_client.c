@@ -189,6 +189,8 @@ static db2_time_t db2_timeseries_start_end(db2_ts_descriptor_t ts, int type)
     {
         return response._time;
     }
+
+    outl("did not get time for %d %d", ts, type);
     
     return -1;
 }

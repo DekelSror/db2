@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "db2_common_types.h"
 #include "db2_client.h"
+#include "utilities.h"
 #include "driver2.h"
 
 int main(int argc, char const *argv[])
@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
 
     outl("******* client %s start", msg);
 
-    timeseries_test(msg, msg_len, 3);
+    timeseries_test((char*)msg, msg_len, 3);
 
     // large_value_test();
 

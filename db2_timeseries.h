@@ -18,7 +18,7 @@ struct ts_slice_t {timeseries_entry_t* start; uint32_t count;};
 int timeseries_can_create(struct db_op_ts_create_t header);
 int timeseries_create(db_value_t* name);
 int timeseries_add(struct db_op_ts_add_t header);
-int timeseries_start_end(struct db_op_ts_start_end_t header);
+db2_time_t timeseries_start_end(struct db_op_ts_start_end_t header);
 struct ts_slice_t timeseries_get_range(struct db_op_ts_get_range_t header);
 
 

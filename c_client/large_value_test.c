@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "utilities.h"
 #include "db2_client.h"
 #include "driver2.h"
 

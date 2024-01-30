@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "db2_client.h"
+#include "utilities.h"
 #include "driver2.h"
 
 double drand(void)
@@ -42,6 +43,8 @@ int timeseries_test(char* name, size_t name_len, unsigned test_size)
 
     db2_time_t range_start = Db2.timeseries_start(ts);
     db2_time_t range_end = Db2.timeseries_end(ts);
+
+    outl("ts test start time %lu end %lu", range_start, range_end);
 
     timeseries_entry_t* range = Db2.timeseries_get_range(ts, range_start, range_end);
 

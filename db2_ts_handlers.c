@@ -1,3 +1,5 @@
+#include <sys/socket.h>
+
 #include "db2_mempool.h"
 #include "db2_timeseries.h"
 #include "utilities.h" 
@@ -61,7 +63,7 @@ int handle_ts_start_end(db_op_t* op, int client_socket)
         ._time =  timeseries_start_end(header)
     };
     
-    send_response(client_socket, (db_response_t*)&response);
+    send(client_socket, &response, sizeof(response), 0);
 
     return 200;
 }

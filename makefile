@@ -12,6 +12,7 @@ server:
 	gcc -g -Wextra -Wall -std=c2x \
 		db2_types.c utilities.c db2_mempool.c db2_time/db2_time.c \
 		db2_kv.c db2_timeseries.c \
+		db2_kv_handlers.c db2_ts_handlers.c \
 		db2_server.c \
 		-o bin/db2.out \
 		-Ddb2_socket_path='"$(HOME)/.db2/db2_comm"' \

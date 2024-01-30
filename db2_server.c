@@ -8,10 +8,11 @@
 #include <stdarg.h>
 #include <fcntl.h>
 
-#include "db2.h"
+#include "db2_kv_handlers.h"
+#include "db2_ts_handlers.h"
+#include "utilities.h" // outl
+#include "db2_server.h"
 
-#define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-#define max_clients (10)
 
 static int handle_op(db_op_t* op, int client_index);
 static int handle_client_request(int client);
@@ -117,17 +118,17 @@ static int handle_client_request(int client)
 
 static int handle_op(db_op_t* op, int client_index)
 {
+    int(*op_handlers[Db2OpTypes._num_ops])(db_op_t*, int);
     int client_socket = clients[client_index].fd;
 
-    int(*op_handlers[Db2OpTypes._num_ops])(db_op_t*, int);
 
     op_handlers[Db2OpTypes._insert] = handle_insert;
     op_handlers[Db2OpTypes._find] = handle_find;
     op_handlers[Db2OpTypes._remove] = handle_remove;
-    op_handlers[Db2OpTypes._ts_create] = timeseries_create;
-    op_handlers[Db2OpTypes._ts_add] = timeseries_add;
-    op_handlers[Db2OpTypes._ts_get_range] = timeseries_get_range;
-    op_handlers[Db2OpTypes._ts_start_end] = timeseries_start_end;
+    op_handlers[Db2OpTypes._ts_create] = handle_create;
+    op_handlers[Db2OpTypes._ts_add] = handle_timeseries_add;
+    op_handlers[Db2OpTypes._ts_get_range] = handle_timeseries_get_range;
+    op_handlers[Db2OpTypes._ts_start_end] = handle_ts_start_end;
     
     return op_handlers[op->_op](op, client_socket);
 }

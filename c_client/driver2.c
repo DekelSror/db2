@@ -17,13 +17,13 @@ int main(int argc, char const *argv[])
 
     outl("******* client %s start", msg);
 
-    // timeseries_test(msg, msg_len, 3);
+    timeseries_test(msg, msg_len, 3);
 
     // large_value_test();
 
     // insert_find_test(3);
 
-    full_table_test();
+    // full_table_test();
 
     outl("******* client %s end", msg);
 

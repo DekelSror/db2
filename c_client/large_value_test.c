@@ -47,10 +47,10 @@ int large_value_test(void)
 
     Db2.connect();
 
-    Db2.insert("large value", 12, file, info.st_size);
+    Db2.kv_insert("large value", 12, file, info.st_size);
 
 
-    void* from_db = Db2.find("large value", 12);
+    void* from_db = Db2.kv_find("large value", 12);
 
 
     if (memcmp(file, from_db, info.st_size) != 0)

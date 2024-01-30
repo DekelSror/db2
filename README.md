@@ -2,14 +2,18 @@
 
 ### Features
 
-1. Key-Value
+1. Key-Value API
     - insert (key, key_len, val, val_len) - (updates on existing key)
-    - find (key, key_lan)
+    - find (key, key_len) -> pointer to a copy of the value
     - remove (key, key_len)
-2. Time Series
-    - create (name) -> series descriptor
+    - detailed signatures in db2_client.h
+2. Time Series API
+    - timeseries entry struct - _time is a 64-bit time field, and _value is a 64-bit floating point (double)
+    - create (name, name_len) -> series descriptor
     - add (descriptor, value)
-    - get range (descriptor, start, end)
+    - get range (descriptor, start, end) -> array of timesries entries
+    - agg functions (sum, avg, median, min, max) - for series or a range
+    - custom queries
 
 
 ### Server
@@ -22,22 +26,14 @@ Server parameters
 - DB2_MAX_CLIENTS (default 10)
 
 
-### Clients
+### Client
 
-C client - 
 ```
 cd c_client/
 make
 ./../bin/driver2.c [msg]
-``` 
-Node client - 
 ```
-npx ts-node node_client/driver2.ts [msg]
-```
-Python client - 
-```
-python3 python_client/driver2.py [msg]
-```
+
 * the msg arg is mandatory
 
 DB parameters (default value) - currently fixed values
@@ -55,4 +51,10 @@ DB parameters (default value) - currently fixed values
 
 
      
+### dev notes
 
+structure - 
+* db_server.c has the server entry point
+    - primary header for server is db2_server.h - implementations for the declarations there can be found in db2_timeseries.c and db2_kv.c
+* driver2.c has the client's (driver) entry point
+    - primary header for the client is db2_client.h. All its declarations are implemented in db2_client.c

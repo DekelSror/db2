@@ -1,9 +1,12 @@
 {
     "compilerOptions": {
+        "module": "commonjs",
+        "target": "ESNext",
+        "moduleResolution": "node",
         "experimentalDecorators": true,
         "outDir": "build",
         "resolveJsonModule": true,
-        "rootDir": "."
+        "rootDir": ".",
     },
     "include": ["*.ts"]
 }

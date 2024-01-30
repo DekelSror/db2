@@ -7,6 +7,13 @@
 // db2_types - common types for server and client
 
 typedef int db2_ts_descriptor_t;
+typedef uint64_t db2_time_t;
+
+typedef struct 
+{
+    db2_time_t _time;
+    double _val;
+} timeseries_entry_t;
 
 
 struct db_op_types 

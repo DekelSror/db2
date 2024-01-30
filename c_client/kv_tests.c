@@ -47,7 +47,7 @@ int insert_find_test(uint32_t test_size)
 // insert
     for (uint32_t i = 0; i < test_size; i++)
     {
-        int res = Db2.insert(keys[i], key_lengths[i], (char*)(values + i), sizeof(user_data_t));
+        int res = Db2.kv_insert(keys[i], key_lengths[i], (char*)(values + i), sizeof(user_data_t));
 
         if (res != 200)
         {
@@ -60,7 +60,7 @@ int insert_find_test(uint32_t test_size)
 // find
     for (uint32_t i = 0; i < test_size; i++)
     {
-        user_data_t* res = (user_data_t*)Db2.find(keys[i], key_lengths[i]);
+        user_data_t* res = (user_data_t*)Db2.kv_find(keys[i], key_lengths[i]);
 
         if (res == NULL)
         {
@@ -143,7 +143,7 @@ int full_table_test(void)
 
     for (size_t i = 0; i < 0x200; i++)
     {
-        int res = Db2.insert(keys[i], key_lengths[i], entries + i, sizeof(user_data_t));
+        int res = Db2.kv_insert(keys[i], key_lengths[i], entries + i, sizeof(user_data_t));
 
         if (res)
         {

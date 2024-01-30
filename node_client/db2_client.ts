@@ -1,111 +1,115 @@
 import * as net from 'net'
-import * as fs from 'fs'
-import * as path from 'path'
+import * as Db2Config from './db2_config.json'
+import { open, readSync, writeSync } from 'fs';
 
-enum Op { insert, find, remove } 
+const simple_hash = (key: string): bigint => {
+    const len = key.length;
+    let h = 5381;
 
-type db2_response = {
-    status: number
-    body: string
-}
-
-type db_op = {
-    op: Op
-    size: number
-    header: {
-        key_size: number
-        value_size: number
-    }    
-    data: string
-}
-
-const parse_response: (raw: Buffer) => db2_response = raw => {
-    return {
-        status: raw.readUint32LE(0),
-        body: raw.toString('utf-8', 4)
+    for (let i = 0; i < len; i++)
+    {
+        h = (h * 33) + Number.parseInt(key[i].toLowerCase(), 36) - 10;
     }
+
+    return BigInt(h);
 }
 
-const bufferize_op = (op: db_op): Buffer => {
-    const bop = Buffer.alloc(op.size)
-    
-    bop.writeInt32LE(op.op, 0)
-    bop.writeUInt32LE(op.size, 4)
-    bop.writeUInt32LE(op.header.key_size, 8)
-    bop.writeUInt32LE(op.header.value_size, 12)
-    bop.write(op.data, 16)
+enum Op { kv_insert, kv_find, kv_remove, ts_create, ts_add, ts_get_range, ts_start_end } 
 
-    return bop
+let socket: net.Socket
+
+const db2_connect = () => {
+    console.log(Db2Config.db2_comm_path)
+    socket = net.createConnection({path: Db2Config.db2_comm_path}, () => console.log('connected to db2'))
+
+    return Boolean(socket) ? 200 : 500
 }
 
-class Db2Client {
-    private socket: net.Socket
-    private comm_path: string = 'some-default-path'
-    
-    connect = () => {
-        const config = fs.readFileSync(path.join(process.cwd(), 'db2_config'));
-        this.comm_path = config.toString()
 
-        this.socket = net.createConnection({path: this.comm_path}, () => {
-            console.log('node client connected!')
+
+const db2_kv_insert = <T>(key: string, value: T): Promise<number> => {
+    const strd = JSON.stringify(value)
+    const key_hash = simple_hash(key)   
+    console.log('kv_insert key_size (+1)', key.length + 1, 'val_size', strd.length, 'hash', key_hash.toString(10))
+
+    // send op
+    // revc response
+    // on 200
+    //  send value
+    //  recv repsonse - return status
+    // on !200
+    //  return status
+
+    const rv = new Promise<number>((resolve, reject) => {
+        socket.once('data', data => {
+            const status = data.readInt32LE(0)
+
+            if (status === 200)
+            {
+                socket.write(key + '\0', err => console.log(err ?? 'streamed key'))
+                socket.write(strd, err => console.log(err ?? 'streamed value'))
+
+                socket.once('data', response => console.log('second insert response', response))
+            }
+            
+            resolve(status)
         })
+    })
+
+    const buf = Buffer.alloc(32)
+    buf.fill(0)
+
+    buf.writeInt32LE(Op.kv_insert, 0)
+    buf.writeUInt32LE(key.length + 1, 8)
+    buf.writeUInt32LE(strd.length, 12)
+
+    buf.writeBigUint64LE(key_hash, 16)
+
+    
+    socket.write(buf, err => console.error(err ?? 'insert op sent'))
+
+    return rv
+}
+
+const db2_kv_find = <T>(key: string): Promise<T> => {
+
+    // send op
+    // recv response
+    // on 200
+    //  recv value - return it
+    
+    let response = {
+        status: 500,
+        value_size: 0
     }
 
-    insert = <T>(key: string, value: T): Promise<number> => {
-        const rv = new Promise<number>((resolve, reject) => {
-            this.socket.once('data', data => {
-                const res = parse_response(data)
-    
-                resolve(res.status)
-            })
+    let rv = new Promise<T>((resolve, reject) => {
+        socket.once('data', data => {
+            response.status = data.readInt32LE(0),
+            response.value_size = data.readUInt32LE(4)
         })
         
-        const strd = JSON.stringify(value)
+        if (response.status === 200) {
+            console.log('found! streaming in the value')
+            const val_buf: Buffer = socket.read(response.value_size)
 
-        const op: db_op = {
-            op: Op.insert,
-            size: 16 + key.length + strd.length,
-            header: {
-                key_size: key.length,
-                value_size: strd.length
-            },
-            data: key + strd
+
+            resolve(JSON.parse(val_buf.toString()) as T)
         }
-    
-        this.socket.write(bufferize_op(op), console.log)
-
-        return rv
-    }
-
-    find = <T>(key: string): Promise<T> => {
-        const rv = new Promise<T>((resolve, reject) => {
-            this.socket.once('data', data => {
-                const res = parse_response(data)
-    
-                if (res.status === 200) {
-                    resolve(JSON.parse(res.body) as T)       
-                } else {
-                    resolve(undefined)
-                }
-            })
-        })
-
-        const op: db_op = {
-            op: Op.find,
-            size: 16 + key.length,
-            header: {
-                key_size: key.length,
-                value_size: 0
-            },
-            data: key
+        else {
+            console.log('no find')
+            resolve(undefined)
         }
-    
-        this.socket.write(bufferize_op(op))
+    })
 
-        return rv
-    }
+    const buf = Buffer.alloc(32).fill(0)
+    buf.writeInt32LE(Op.kv_find, 0)
+    buf.writeBigInt64LE(simple_hash(key), 8)
+
+    socket.write(buf, err => console.log(err ?? 'sent find op'))    
+
+    return rv
 }
 
-const Db2 = new Db2Client()
 
-export default Db2
+export {db2_connect, db2_kv_insert, db2_kv_find}

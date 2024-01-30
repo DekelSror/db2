@@ -10,7 +10,6 @@
 
 #include "db2_mempool.h" // Mempool
 #include "utilities.h" // stream_in stream_out
-#include "db2_types.h"
 #include "db2_client.h"
 
 
@@ -120,7 +119,6 @@ static void* db2_find(char* key, uint32_t key_len)
     {
         found = Mempool.allocate(response._body_size);
         stream_in(client_socket, found, response._body_size);
-        recieve_response(&response);
     }
 
     return found;
@@ -290,9 +288,9 @@ double db2_nts_avg(db2_ts_descriptor_t ts, time_t start, time_t end)
 const struct db2_client_t Db2 = {
     .connect = db2_connect,
     .stop = db2_stop,
-    .find = db2_find,
-    .insert = db2_insert,
-    .remove = db2_remove,
+    .kv_find = db2_find,
+    .kv_insert = db2_insert,
+    .kv_remove = db2_remove,
     .timeseries_create = db2_timeseries_create,
     .timeseries_add = db2_timeseries_add,
     .timeseries_get_range = db2_timeseries_get_range,

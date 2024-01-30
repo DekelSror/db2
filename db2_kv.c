@@ -4,47 +4,23 @@
 
 #include "utilities.h"
 #include "db2_mempool.h"
-#include "db2_types.h"
-#include "db2.h"
+#include "db2_kv.h"
 
 static db_entry_t db[db2_num_entries] = {0};
 static uint32_t db_size = 0;
 
 static long hash_index(uint64_t hash);
 
-int handle_insert(db_op_t *op, int client_socket)
+
+int kv_can_insert(struct db_op_insert_t header)
 {
-    db_response_t response = {._status = 200};
-    struct db_op_insert_t header = op->_header._insert;
-
-    if (!Mempool.has(header._key_size + header._val_size + sizeof(db_value_t) * 2))
-    {
-        response._status = 500;
-        send_response(client_socket, &response);
-        return 1;
-    }
-
-    if (db_size == db2_num_entries)
-    {
-        response._status = 500;
-        send_response(client_socket, &response);
-        return 1;
-    }
-
-    db_value_t *key_block = (db_value_t *)Mempool.allocate(header._key_size + sizeof(db_value_t));
-    key_block->_size = header._key_size;
-
-    db_value_t *val_block = (db_value_t *)Mempool.allocate(header._val_size + sizeof(db_value_t));
-    val_block->_size = header._val_size;
-
-    send_response(client_socket, &response);
-
-    stream_in(client_socket, key_block->_val, key_block->_size);
-    stream_in(client_socket, val_block->_val, val_block->_size);
+    uint32_t required_memory = header._key_size + header._val_size + sizeof(db_value_t) * 2;
+    return Mempool.has(required_memory) && db_size < db2_num_entries;
+}
 
 
-    uint64_t key_hash = header._key_hash;
-
+int kv_insert(uint64_t key_hash, db_value_t* key, db_value_t* val)
+{
     long index = key_hash % db2_num_entries;
     const long init_index = index;
 
@@ -52,6 +28,7 @@ int handle_insert(db_op_t *op, int client_socket)
     {
         if (db[index]._hash == key_hash)
         {
+            // this is also not the purest
             Mempool.free(db[index]._key);
             Mempool.free(db[index]._val);
             db[index]._hash = 0;
@@ -60,14 +37,11 @@ int handle_insert(db_op_t *op, int client_socket)
         if (db[index]._hash == 0)
         {
             db[index]._hash = key_hash;
-            db[index]._val = val_block;
-            db[index]._key = key_block;
-
-            outl("handle_insert inserted key '%s' at index %ld", key_block->_val, index);
+            db[index]._val = val;
+            db[index]._key = key;
 
             db_size++;
 
-            send_response(client_socket, &response);
             return 0;
         }
 
@@ -78,18 +52,11 @@ int handle_insert(db_op_t *op, int client_socket)
         }
     } while (index != init_index);
 
-    outl("this will never be printed?");
-    response._status = 500;
-    send_response(client_socket, &response);
-
     return 1;
 }
 
-int handle_remove(db_op_t *op, int client_socket)
+int kv_remove(struct db_op_remove_t header)
 {
-    db_response_t response = {._status = 200};
-    struct db_op_remove_t header = op->_header._remove;
-
     long index = hash_index(header._key_hash);
 
     if (index >= 0)
@@ -102,37 +69,22 @@ int handle_remove(db_op_t *op, int client_socket)
 
         db_size--;
     }
-    else
-    {
-        response._status = 500;
-    }
-
-    send_response(client_socket, &response);
-
-    return 0;
+    
+    return index < 0; // for positive 0
 }
 
-int handle_find(db_op_t *op, int client_socket)
+db_value_t* kv_find(struct db_op_find_t header)
 {
-    db_response_t response = {._status = 200};
-    struct db_op_find_t header = op->_header._find;
-
     long index = hash_index(header._key_hash);
 
-    if (index >= 0)
+    if (index < 0)
     {
-        db_response_t response = { ._status = 200, ._body_size = db[index]._val->_size };
-        send_response(client_socket, &response);
-        stream_out(client_socket, db[index]._val->_val, db[index]._val->_size);
+        return NULL;
     }
-    else
-    {
-        response._status = 404;
-    }
-    send_response(client_socket, &response);
 
-    return response._status != 200;
+    return db[index]._val;
 }
+
 
 //
 

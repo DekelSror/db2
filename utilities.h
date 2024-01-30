@@ -4,7 +4,10 @@
 
 
 #include <unistd.h>
+#include <stdio.h>
 #include "db2_types.h"
+
+#define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 
 
 int stream_out(int socket, const char* data, ssize_t size);

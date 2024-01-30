@@ -7,18 +7,15 @@
 
 #include "db2_common_types.h"
 
-#define outl(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-
-
 struct db2_client_t
 {
     int(*connect)(void);
     void(*stop)(void);
     //
-    int(*insert)(char* key, uint32_t key_len, void* val, uint32_t val_len);
-    int(*remove)(char* key, uint32_t key_len);
+    int(*kv_insert)(char* key, uint32_t key_len, void* val, uint32_t val_len);
+    int(*kv_remove)(char* key, uint32_t key_len);
     // find allocates memory for the returned value; it is up to the user to free it
-    void*(*find)(char* key, uint32_t key_len);
+    void*(*kv_find)(char* key, uint32_t key_len);
     //
     // timeseries_create will return the descriptor if the series already exists
     db2_ts_descriptor_t(*timeseries_create)(char* key, uint32_t key_len);

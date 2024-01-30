@@ -4,8 +4,8 @@
 
 
 #pragma pack(1)
-// the whole motivation is to represent time in microseconds using 64 bits
-// and enable native arithmetics
+// the motivation is to represent time in microseconds using 64 bits
+// and enable native arithmetic operationsm resulting in a time span
 typedef struct
 {
     unsigned _us: 10;
@@ -15,7 +15,7 @@ typedef struct
     unsigned _hours: 5;
     unsigned _day: 5;
     unsigned _month: 4;
-    unsigned _year: 14;
+    unsigned _year: 14; // 10 bits for 1024 years from 1970 could be something
 } db2_time_internal_t;
 #pragma pack()
 
@@ -72,7 +72,7 @@ db2_time_t db2_now(void)
 void time_print_all(db2_time_t dt)
 {
     db2_time_internal_t t = *((db2_time_internal_t*)&dt);
-    printf("%d-%d-%d %d:%d:%d.%d.%d\n", t._year, t._month + 1, t._day, t._hours, t._minutes, t._seconds, t._ms, t._us);
+    printf("%d-%d-%d %d:%d:%d.%d.%d\n", t._year, t._month, t._day, t._hours, t._minutes, t._seconds, t._ms, t._us);
 }
 
 

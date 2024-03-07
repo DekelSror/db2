@@ -52,6 +52,7 @@ int kv_insert(uint64_t key_hash, db_value_t* key, db_value_t* val)
         }
     } while (index != init_index);
 
+    // this should never execute
     return 1;
 }
 

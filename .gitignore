@@ -1,5 +1,9 @@
 bin
+build
+include
 .vscode
 node_client/node_modules
 db2_comm
 python_client/__pycache__
+*.o
+*.a

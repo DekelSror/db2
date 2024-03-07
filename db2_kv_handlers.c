@@ -9,26 +9,28 @@ int handle_insert(db_op_t *op, int client_socket)
 
     outl("kv_insert key_size %u val_size %u hash %lu", header._key_size, header._val_size, header._key_hash);
 
-    if (!kv_can_insert(header))
+    if (kv_can_insert(header))
     {
-        response._status = 500;
         send_response(client_socket, &response);
-        return 1;
+        db_value_t *key_block = (db_value_t*)Mempool.allocate(header._key_size + sizeof(db_value_t));
+        key_block->_size = header._key_size;
+
+        db_value_t *val_block = (db_value_t*)Mempool.allocate(header._val_size + sizeof(db_value_t));
+        val_block->_size = header._val_size;
+
+
+        stream_in(client_socket, key_block->_val, key_block->_size);
+        stream_in(client_socket, val_block->_val, val_block->_size);
+        send_response(client_socket, &response);
+
+        outl("got kv from client");
+
+        return kv_insert(header._key_hash, key_block, val_block);
     }
 
-    db_value_t *key_block = (db_value_t*)Mempool.allocate(header._key_size + sizeof(db_value_t));
-    key_block->_size = header._key_size;
-
-    db_value_t *val_block = (db_value_t*)Mempool.allocate(header._val_size + sizeof(db_value_t));
-    val_block->_size = header._val_size;
-
+    response._status = 500;
     send_response(client_socket, &response);
-
-    stream_in(client_socket, key_block->_val, key_block->_size);
-    stream_in(client_socket, val_block->_val, val_block->_size);
-    outl("got kv from client");
-
-    return kv_insert(header._key_hash, key_block, val_block);
+    return 1;
 }
 
 int handle_remove(db_op_t *op, int client_socket)

@@ -40,7 +40,6 @@ int insert_find_test(uint32_t test_size)
         memmove(keys[i], gkey, key_lengths[i]);
         generate_ud(values + i);
 
-        outl("generated key '%s'", keys[i]);
         repr_udata(values + i);
     }
 

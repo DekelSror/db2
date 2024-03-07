@@ -1,20 +1,45 @@
+modules=db2_types/db2_types utilities/utilities db2_mempool/db2_mempool db2_time/db2_time
+module_sources=$(addsuffix .c, $(modules))
+module_headers=$(addsuffix .h, $(modules))
+
+objects=$(addprefix $(db2_build_dir)/, db2_types.o utilities.o db2_mempool.o db2_time.o)
 
 
-HOME=$(shell echo ~)
+flags = -g -Wall -Wextra -pedantic -pedantic-errors -std=c2x
+macros = -Ddb2_socket_path='"$(.db2/db2_comm)"' -D_POSIX_C_SOURCE=200809L
 
-# _POSIX_C_SOURCE is for nanoseconds time API (timespec, clock_gettime ...) used in db2_time
-
-server:
-	rm -rf bin/db2.out
-	mkdir -p bin
-	rm -rf ~/.db2
-	mkdir ~/.db2
-	gcc -g -Wextra -Wall -std=c2x \
-		db2_types.c utilities.c db2_mempool.c db2_time/db2_time.c \
-		db2_kv.c db2_timeseries.c \
-		db2_kv_handlers.c db2_ts_handlers.c \
+server: pre_install  headers
+	gcc $(flags) \
+		$(module_sources) \
+		db2_kv.c db2_kv_handlers.c \
+		db2_timeseries.c db2_ts_handlers.c \
 		db2_server.c \
 		-o bin/db2.out \
-		-Ddb2_socket_path='"$(HOME)/.db2/db2_comm"' \
-		-D_POSIX_C_SOURCE=200809L \
-		-I. -I./db2_time
+		$(macros) \
+		-I./include
+
+
+cli: pre_install headers
+	gcc $(flags) \
+	$(module_sources) \
+	c_client/db2_client.c \
+	cli.c \
+	-o bin/cli.out \
+	$(macros) \
+	-I./include
+
+
+
+headers: pre_install
+	ln -sf $(addprefix $(PWD)/, $(module_headers) c_client/db2_client.h db2_server.h db2_kv.h db2_kv_handlers.h db2_timeseries.h db2_timeseries_handlers.h include)
+
+
+pre_install:
+	mkdir -p bin include .db2
+
+
+.PHONY:
+clean:
+	rm -rf bin/** include/**
+
+

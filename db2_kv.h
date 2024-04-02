@@ -3,7 +3,7 @@
 
 #include "db2_types.h"
 
-#define db2_num_entries 0x100
+#define db2_num_entries 0x10
 
 db_value_t* kv_find(struct db_op_find_t header);
 int kv_remove(struct db_op_remove_t header);

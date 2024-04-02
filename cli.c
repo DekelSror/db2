@@ -1,13 +1,14 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h> // free
 
 #include "db2_client.h"
 
 
 char const* command_names[] = {"set", "get", "del"}; 
 
-int get_command(char const* command)
+int get_command_code(char const* command)
 {
     for (int i = 0; i < 3; i++)
     {
@@ -21,26 +22,27 @@ int get_command(char const* command)
     return -1;
 }
 
-
 int cli_set(char const* args[])
 {
-    char const* key = args[1];
-    char const* value = args[2];
+    char const* key = args[2];
+    char const* value = args[3];
 
-    return Db2.kv_insert((char*)key, value - key, (char*)value, strlen(value));
+    printf("cli set key_len %lu %lu\n", strlen(key), value - key);
+
+    return Db2.kv_insert((char*)key, strlen(key), (char*)value, strlen(value));
 }
-
 
 void* cli_get(char const* args[])
 {
-    char const* key = args[1];
+    char const* key = args[2];
+    printf("cli get key_len %lu\n", strlen(key));
 
     return Db2.kv_find((char*)key, strlen(key));
 }
 
 int cli_del(char const* args[])
 {
-    char const* key = args[1];
+    char const* key = args[2];
 
     return Db2.kv_remove((char*)key, strlen(key));
 }
@@ -58,7 +60,7 @@ int main(int argc, char const *argv[])
 
     char const* command = argv[1];
     
-    int command_code = get_command(command);
+    int command_code = get_command_code(command);
 
     if (command_code == -1)
     {
@@ -83,6 +85,7 @@ int main(int argc, char const *argv[])
         {
             char* res = (char*)cli_get(argv);
             printf("%s\n", res);
+            free(res);
         }
         break;
     case 2:
@@ -99,6 +102,5 @@ int main(int argc, char const *argv[])
     
     Db2.stop();
 
-    
     return 0;
 }

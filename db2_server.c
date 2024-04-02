@@ -2,11 +2,13 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "db2_kv_handlers.h"
 #include "db2_ts_handlers.h"
@@ -54,7 +56,6 @@ int main(void)
             {
                 outl("pollin on %d", clients[i].fd);
                 handle_client_request(i);
-                
             }
 
             if (clients[i].revents & POLLHUP)
@@ -64,6 +65,7 @@ int main(void)
             }
         }
     }
+
 
     return 0;
 }
@@ -168,8 +170,11 @@ static int setup(void)
     unlink(server_addr.sun_path); // failure does not matter here
 
     server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
+    outl("socket errno %d", errno);
     int bind_res = bind(server_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
+    outl("bind errno %d", errno);
     int listen_res = listen(server_socket, 1);
+    outl("listen errno %d", errno);
 
     outl("listening! sock %d bind %d listen %d", server_socket, bind_res, listen_res);
 

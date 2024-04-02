@@ -7,8 +7,6 @@ int handle_insert(db_op_t *op, int client_socket)
     db_response_t response = {._status = 200};
     struct db_op_insert_t header = op->_header._insert;
 
-    outl("kv_insert key_size %u val_size %u hash %lu", header._key_size, header._val_size, header._key_hash);
-
     if (kv_can_insert(header))
     {
         send_response(client_socket, &response);
@@ -22,8 +20,6 @@ int handle_insert(db_op_t *op, int client_socket)
         stream_in(client_socket, key_block->_val, key_block->_size);
         stream_in(client_socket, val_block->_val, val_block->_size);
         send_response(client_socket, &response);
-
-        outl("got kv from client");
 
         return kv_insert(header._key_hash, key_block, val_block);
     }

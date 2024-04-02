@@ -40,6 +40,8 @@ int kv_insert(uint64_t key_hash, db_value_t* key, db_value_t* val)
             db[index]._val = val;
             db[index]._key = key;
 
+            outl("kv insert at index %ld", index);
+
             db_size++;
 
             return 0;
@@ -77,6 +79,8 @@ int kv_remove(struct db_op_remove_t header)
 db_value_t* kv_find(struct db_op_find_t header)
 {
     long index = hash_index(header._key_hash);
+
+    outl("kv find index %ld", index);
 
     if (index < 0)
     {

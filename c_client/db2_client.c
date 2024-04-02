@@ -59,9 +59,6 @@ static void db2_stop(void)
 static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 {
     db_response_t response = { 0 };
-    
-    outl("insert key '%s' start", key);
-
     db_op_t op = {
         ._op = Db2OpTypes._insert,
         ._header._insert._key_size = key_len,
@@ -69,11 +66,10 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
         ._header._insert._key_hash = db_hash(key, key_len)
     };
 
-    outl("insert op %u %u %lu", op._header._insert._key_size, op._header._insert._val_size, op._header._insert._key_hash);
+    outl("client insert, key '%s' (len %u), hash %lu", key, key_len, db_hash(key, key_len));
 
     send_op(&op);
     recieve_response(&response);
-    outl("insert first status %d", response._status);
 
     if (response._status == 200)
     {
@@ -82,7 +78,6 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 
         recieve_response(&response);
         
-        outl("insert final status %d", response._status);
     }
 
     return response._status;
@@ -108,6 +103,8 @@ static void* db2_find(char* key, uint32_t key_len)
         ._op = Db2OpTypes._find,
         ._header._find._key_hash = db_hash(key, key_len)
     };
+
+    outl("client find, key '%s' (len %u), hash %lu", key, key_len, db_hash(key, key_len));
 
     db_response_t response = { 0 };
 

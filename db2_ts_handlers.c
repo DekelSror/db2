@@ -18,7 +18,7 @@ int handle_create(db_op_t* op, int client_socket)
         return 1;
     }
 
-    db_value_t* key_block = Mempool.allocate(header._key_size + sizeof(db_value_t));
+    db2_value_t* key_block = Mempool.allocate(header._key_size + sizeof(db2_value_t));
     key_block->_size = header._key_size;
 
     send_response(client_socket, &response);

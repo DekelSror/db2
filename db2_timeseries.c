@@ -33,7 +33,7 @@ int timeseries_can_create(struct db_op_ts_create_t header)
 }
 
 
-int timeseries_create(db_value_t* name)
+int timeseries_create(db2_value_t* name)
 {
     for (int i = 0; i < next_series_index; i++)
     {

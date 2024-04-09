@@ -12,13 +12,13 @@ static int has(size_t size)
     return limit - current_size >= size;
 }
 
-static db_value_t* db2_allocate(size_t size)
+static db2_value_t* db2_allocate(size_t size)
 {
-    db_value_t* res = NULL;
+    db2_value_t* res = NULL;
 
     if (has(size))
     {
-        res = (db_value_t*)malloc(size);
+        res = (db2_value_t*)malloc(size);
 
         if (res != NULL)
         {
@@ -29,7 +29,7 @@ static db_value_t* db2_allocate(size_t size)
     return res;
 }
 
-static void db2_free(db_value_t* block)
+static void db2_free(db2_value_t* block)
 {
     if (block != NULL)
     {

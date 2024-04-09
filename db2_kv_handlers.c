@@ -10,10 +10,10 @@ int handle_insert(db_op_t *op, int client_socket)
     if (kv_can_insert(header))
     {
         send_response(client_socket, &response);
-        db_value_t *key_block = (db_value_t*)Mempool.allocate(header._key_size + sizeof(db_value_t));
+        db2_value_t *key_block = (db2_value_t*)Mempool.allocate(header._key_size + sizeof(db2_value_t));
         key_block->_size = header._key_size;
 
-        db_value_t *val_block = (db_value_t*)Mempool.allocate(header._val_size + sizeof(db_value_t));
+        db2_value_t *val_block = (db2_value_t*)Mempool.allocate(header._val_size + sizeof(db2_value_t));
         val_block->_size = header._val_size;
 
 
@@ -49,7 +49,7 @@ int handle_find(db_op_t *op, int client_socket)
 {
     db_response_t response = {._status = 200, ._body_size = 0};
 
-    db_value_t* found = kv_find(op->_header._find);
+    db2_value_t* found = kv_find(op->_header._find);
 
     if (found != NULL)
     {

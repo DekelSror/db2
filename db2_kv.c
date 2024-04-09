@@ -14,12 +14,12 @@ static long hash_index(uint64_t hash);
 
 int kv_can_insert(struct db_op_insert_t header)
 {
-    uint32_t required_memory = header._key_size + header._val_size + sizeof(db_value_t) * 2;
+    uint32_t required_memory = header._key_size + header._val_size + sizeof(db2_value_t) * 2;
     return Mempool.has(required_memory) && db_size < db2_num_entries;
 }
 
 
-int kv_insert(uint64_t key_hash, db_value_t* key, db_value_t* val)
+int kv_insert(uint64_t key_hash, db2_value_t* key, db2_value_t* val)
 {
     long index = key_hash % db2_num_entries;
     const long init_index = index;
@@ -76,7 +76,7 @@ int kv_remove(struct db_op_remove_t header)
     return index < 0; // for positive 0
 }
 
-db_value_t* kv_find(struct db_op_find_t header)
+db2_value_t* kv_find(struct db_op_find_t header)
 {
     long index = hash_index(header._key_hash);
 

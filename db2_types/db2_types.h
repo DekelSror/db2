@@ -34,7 +34,7 @@ typedef struct
 {
     uint32_t _size;
     char _val[];
-} db_value_t;
+} db2_value_t;
 
 typedef struct 
 {
@@ -51,8 +51,8 @@ struct db_ts_create_response
 typedef struct
 {
     uint64_t _hash;
-    db_value_t* _key;
-    db_value_t* _val;
+    db2_value_t* _key;
+    db2_value_t* _val;
 } db_entry_t;
 
 struct db_op_insert_t

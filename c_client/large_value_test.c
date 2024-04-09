@@ -10,6 +10,21 @@
 #include "driver2.h"
 
 
+void random_file(const char* path, size_t size)
+{
+    int fd = open(path, O_CREAT | O_WRONLY, 0400);
+
+    int rand_fd = open("/dev/random", O_RDONLY, 0200);
+
+    char buff[8192];
+
+    for (size_t i = 0; i < size < 8192; i++)
+    {
+        read(rand_fd, buff, 8192);
+        write(fd, buff, 8192);
+    }
+}
+
 ssize_t generate_file(const char* path, size_t size)
 {
     int fd = open(path, O_CREAT | O_WRONLY, 0400);
@@ -37,9 +52,9 @@ int large_value_test(void)
 {
     const char* path = "large_val_test_file";
 
-    generate_file(path, 0x400 * 0x400);
+    random_file(path, 0x400 * 0x400);
+    
     struct stat info;
-
     stat(path, &info);
 
     int fd = open(path, O_RDONLY, 0444);

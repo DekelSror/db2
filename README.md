@@ -26,3 +26,9 @@
 - get_range [start] [end]
 - start [series_descriptor]
 - end [series_descriptor]
+
+## future
+- ingest batches of commands without connecting each time
+- cache - ttl and the such
+- http/s / ssh communication
+- summary / pack timeseries

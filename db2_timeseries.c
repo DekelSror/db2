@@ -5,6 +5,13 @@
 #include "db2_mempool.h"
 #include "db2_timeseries.h"
 
+typedef struct
+{
+    db2_value_t* _key;
+    unsigned _size;
+    timeseries_entry_t _entries[db2_max_timeseries_entries];
+} timeseries_t;
+
 static struct ts_range_t ts_range_params(struct db_op_ts_get_range_t header);
 
 static timeseries_t db[db2_max_timeseries] = { 0 };

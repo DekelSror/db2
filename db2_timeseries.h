@@ -6,12 +6,7 @@
 #define db2_max_timeseries (20)
 #define db2_max_timeseries_entries (0x1000)
 
-typedef struct
-{
-    db2_value_t* _key;
-    unsigned _size;
-    timeseries_entry_t _entries[db2_max_timeseries_entries];
-} timeseries_t;
+
 
 struct ts_slice_t {timeseries_entry_t* start; uint32_t count;};
 

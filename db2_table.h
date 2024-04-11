@@ -12,7 +12,14 @@ struct db2_table_api_t
 {
     // schema related
     table_factory_t(*create)(char* name, size_t name_len, int persist);
-    int(*add_column)(table_factory_t table, char* column_name, enum column_types_e column_type, int(*validator)(void*), void* validator_arg);
+    int(*add_column)(
+        table_factory_t table_f,
+        char* column_name,
+        enum column_types_e column_type,
+        int _optional,
+        int(*validator)(void*),
+        void* validator_arg
+    );
     table_descriptor_t(*finalize)(table_factory_t table);
     //
     int(*insert)(table_descriptor_t table, ...); // va_args are the cell values 

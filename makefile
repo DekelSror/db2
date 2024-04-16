@@ -5,6 +5,12 @@ module_headers=$(addsuffix .h, $(modules))
 flags = -g -Wall -Wextra -pedantic -pedantic-errors -std=c2x
 macros = -Ddb2_socket_path='"$(PWD)/.db2/db2_comm"' -D_POSIX_C_SOURCE=200809L
 
+config = -Ddb2_num_entries=16 \
+	-Dtotal_mem=64000 \
+	-Dfeatures=kv \
+	-Dmax_clients=10 \
+	-Dindex_of_hash_fn=0
+
 server: pre_install headers
 	gcc $(flags) \
 	$(module_sources) \
@@ -35,7 +41,7 @@ headers: pre_install
 	include)
 
 
-.PHONY:
+.PHONY: pre_install clean
 pre_install:
 	mkdir -p bin include .db2
 	# $(PWD).db2/db2_comm

@@ -4,12 +4,12 @@
 #include "db2_mempool.h"
 
 static size_t current_size = 0;
-static size_t limit = 0x400 * 0x400 * 0x400;
+#define total_mem (64000)
 
 
 static int has(size_t size)
 {
-    return limit - current_size >= size;
+    return total_mem - current_size >= size;
 }
 
 static db2_value_t* db2_allocate(size_t size)

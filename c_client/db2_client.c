@@ -12,9 +12,13 @@
 #include "utilities.h" // stream_in stream_out
 #include "db2_client.h"
 
+#define index_of_hash_fn (0)
 
 static uint64_t simple_hash(char *key, uint32_t len);
-uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
+
+static uint64_t(*hashes[])(char*, uint32_t) = {simple_hash};
+
+uint64_t (*db_hash)(char *, uint32_t);
 
 static int client_socket = -1;
 
@@ -43,6 +47,8 @@ static int db2_connect(void)
 
     recieve_response();
 
+    db_hash = hashes[index_of_hash_fn];
+
     return response.status;
 }
 
@@ -67,7 +73,7 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
     outl("client insert, key '%s' (len %u), hash %lu", key, key_len, db_hash(key, key_len));
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
 
     if (response.status == 200)
     {
@@ -134,7 +140,7 @@ static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
     if (ts_response->status == 200) // can create timeseries
     {
         stream_out(client_socket, name, name_len);
-        recieve_response((db_response_t*)(&response));
+        recieve_response();
 
         if (ts_response->status == 200)
         {
@@ -219,7 +225,7 @@ static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_
         outl("get_range streaming in the result");
         stream_in(client_socket, result, response.body_size);
         outl("get_range got result; waiting for response from server");
-        recieve_response(&response);
+        recieve_response();
 
         if (response.body_size != result_size)
         {

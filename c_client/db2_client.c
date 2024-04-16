@@ -18,20 +18,19 @@ uint64_t (*db_hash)(char *, uint32_t) = simple_hash;
 
 static int client_socket = -1;
 
+static db_response_t response = { 0 };
 static ssize_t send_op(db_op_t* op)
 {
     return send(client_socket, op, sizeof(db_op_t), 0);
 }
 
-static ssize_t recieve_response(db_response_t* response)
+static ssize_t recieve_response(void)
 {
-    return recv(client_socket, response, sizeof(db_response_t), 0);
+    return recv(client_socket, &response, sizeof(db_response_t), 0);
 }
-
 
 static int db2_connect(void)
 {
-    db_response_t response = { 0 };
 
     struct sockaddr_un server_addr = { 
         .sun_family = AF_UNIX,
@@ -42,7 +41,7 @@ static int db2_connect(void)
 
     connect(client_socket, (const struct sockaddr*)&server_addr, sizeof(server_addr));
 
-    recieve_response(&response);
+    recieve_response();
 
     return response.status;
 }
@@ -58,7 +57,6 @@ static void db2_stop(void)
 
 static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 {
-    db_response_t response = { 0 };
     db_op_t op = {
         .op = Db2OpTypes.insert,
         .header.insert.key_size = key_len,
@@ -76,7 +74,7 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
         stream_out(client_socket, key, key_len);
         stream_out(client_socket, val, val_len);
 
-        recieve_response(&response);
+        recieve_response();
         
     }
 
@@ -85,14 +83,13 @@ static int db2_insert(char* key, uint32_t key_len, void* val, uint32_t val_len)
 
 static int db2_remove(char* key, uint32_t key_len)
 {
-    db_response_t response = { 0 };
     db_op_t op = {
         .op = Db2OpTypes.remove,
         .header.remove.key_hash = db_hash(key, key_len),
     };
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
 
     return response.status;
 }
@@ -106,10 +103,8 @@ static void* db2_find(char* key, uint32_t key_len)
 
     outl("client find, key '%s' (len %u), hash %lu", key, key_len, db_hash(key, key_len));
 
-    db_response_t response = { 0 };
-
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
     void* found = NULL;
 
     if (response.status == 200)
@@ -126,24 +121,24 @@ static void* db2_find(char* key, uint32_t key_len)
 
 static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
 {
-    struct db_ts_create_response response = { 0 };
-
     db_op_t op = {
         .op = Db2OpTypes.ts_create,
         .header.ts_create.key_size = name_len
     };
     
     send_op(&op);
-    recieve_response((db_response_t*)(&response));
+    recieve_response();
 
-    if (response.status == 200) // can create timeseries
+    struct db_ts_create_response* ts_response = (struct db_ts_create_response*)&response;
+
+    if (ts_response->status == 200) // can create timeseries
     {
         stream_out(client_socket, name, name_len);
         recieve_response((db_response_t*)(&response));
 
-        if (response.status == 200)
+        if (ts_response->status == 200)
         {
-            return response.ts;
+            return ts_response->ts;
         }
     }
     
@@ -152,8 +147,6 @@ static db2_ts_descriptor_t db2_timeseries_create(char* name, unsigned name_len)
 
 static int db2_timeseries_add(db2_ts_descriptor_t ts, double val)
 {
-    
-    db_response_t response = { 0 };
     db_op_t op = {
         .op = Db2OpTypes.ts_add,
         .header.ts_add.ts = ts,
@@ -161,7 +154,7 @@ static int db2_timeseries_add(db2_ts_descriptor_t ts, double val)
     };
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
     
     return response.status;
 }
@@ -171,7 +164,7 @@ static db2_time_t db2_timeseries_start_end(db2_ts_descriptor_t ts, int type)
     struct {
         int status;
         db2_time_t time;
-    } response = { 0 };
+    } ts_response = { 0 };
 
     db_op_t op = {
         .op = Db2OpTypes.ts_start_end,
@@ -180,11 +173,11 @@ static db2_time_t db2_timeseries_start_end(db2_ts_descriptor_t ts, int type)
     };
 
     send_op(&op);
-    recv(client_socket, &response, sizeof(response), 0);
+    recv(client_socket, &ts_response, sizeof(ts_response), 0);
 
-    if (response.status == 200)
+    if (ts_response.status == 200)
     {
-        return response.time;
+        return ts_response.time;
     }
 
     outl("did not get time for %d %d", ts, type);
@@ -205,7 +198,6 @@ static db2_time_t db2_timeseries_end(db2_ts_descriptor_t ts)
 
 static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_time_t start, db2_time_t end)
 {
-    db_response_t response = { 0 };
     db_op_t op = {    
         .op = Db2OpTypes.ts_get_range,
         .header.ts_get_range.ts = ts,
@@ -214,7 +206,7 @@ static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_
     };
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
 
     void* result = NULL;
 
@@ -240,7 +232,6 @@ static timeseries_entry_t* db2_timeseries_get_range(db2_ts_descriptor_t ts, db2_
 
 double db2_nts_sum(db2_ts_descriptor_t ts, time_t start, time_t end)
 {
-    db_response_t response = { 0 };
     db_op_t op = {
         .op = Db2OpTypes.ts_get_range,
         .header.ts_get_range.ts = ts,
@@ -249,7 +240,7 @@ double db2_nts_sum(db2_ts_descriptor_t ts, time_t start, time_t end)
     };
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
 
     double res = 0.0;
     if (response.status == 200)
@@ -263,7 +254,6 @@ double db2_nts_sum(db2_ts_descriptor_t ts, time_t start, time_t end)
 
 double db2_nts_avg(db2_ts_descriptor_t ts, time_t start, time_t end)
 {
-    db_response_t response = { 0 };
     db_op_t op = {
         .op = Db2OpTypes.ts_get_range,
         .header.ts_get_range.ts = ts,
@@ -272,7 +262,7 @@ double db2_nts_avg(db2_ts_descriptor_t ts, time_t start, time_t end)
     };
 
     send_op(&op);
-    recieve_response(&response);
+    recieve_response();
 
     double res = 0.0;
     if (response.status == 200)

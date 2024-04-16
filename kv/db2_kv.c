@@ -14,7 +14,7 @@ static long hash_index(uint64_t hash);
 
 int kv_can_insert(struct db_op_insert_t header)
 {
-    uint32_t required_memory = header._key_size + header._val_size + sizeof(db2_value_t) * 2;
+    uint32_t required_memory = header.key_size + header.val_size + sizeof(db2_value_t) * 2;
     return Mempool.has(required_memory) && db_size < db2_num_entries;
 }
 
@@ -26,19 +26,19 @@ int kv_insert(uint64_t key_hash, db2_value_t* key, db2_value_t* val)
 
     do
     {
-        if (db[index]._hash == key_hash)
+        if (db[index].hash == key_hash)
         {
             // this is also not the purest
-            Mempool.free(db[index]._key);
-            Mempool.free(db[index]._val);
-            db[index]._hash = 0;
+            Mempool.free(db[index].key);
+            Mempool.free(db[index].val);
+            db[index].hash = 0;
         }
 
-        if (db[index]._hash == 0)
+        if (db[index].hash == 0)
         {
-            db[index]._hash = key_hash;
-            db[index]._val = val;
-            db[index]._key = key;
+            db[index].hash = key_hash;
+            db[index].val = val;
+            db[index].key = key;
 
             outl("kv insert at index %ld", index);
 
@@ -60,15 +60,15 @@ int kv_insert(uint64_t key_hash, db2_value_t* key, db2_value_t* val)
 
 int kv_remove(struct db_op_remove_t header)
 {
-    long index = hash_index(header._key_hash);
+    long index = hash_index(header.key_hash);
 
     if (index >= 0)
     {
-        db[index]._hash = 0;
-        Mempool.free(db[index]._key);
-        Mempool.free(db[index]._val);
-        db[index]._key = NULL;
-        db[index]._val = NULL;
+        db[index].hash = 0;
+        Mempool.free(db[index].key);
+        Mempool.free(db[index].val);
+        db[index].key = NULL;
+        db[index].val = NULL;
 
         db_size--;
     }
@@ -78,7 +78,7 @@ int kv_remove(struct db_op_remove_t header)
 
 db2_value_t* kv_find(struct db_op_find_t header)
 {
-    long index = hash_index(header._key_hash);
+    long index = hash_index(header.key_hash);
 
     outl("kv find index %ld", index);
 
@@ -87,7 +87,7 @@ db2_value_t* kv_find(struct db_op_find_t header)
         return NULL;
     }
 
-    return db[index]._val;
+    return db[index].val;
 }
 
 
@@ -100,7 +100,7 @@ static long hash_index(uint64_t hash)
 
     do
     {
-        if (db[index]._hash == hash)
+        if (db[index].hash == hash)
         {
             return index;
         }

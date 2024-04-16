@@ -11,106 +11,106 @@ typedef uint64_t db2_time_t;
 
 typedef struct 
 {
-    db2_time_t _time;
-    double _val;
+    db2_time_t time;
+    double val;
 } timeseries_entry_t;
 
 
 struct db_op_types 
 {
-    int _insert;
-    int _find;
-    int _remove;
-    int _ts_create;
-    int _ts_add;
-    int _ts_get_range;
-    int _ts_start_end;
-    int _num_ops;
+    int insert;
+    int find;
+    int remove;
+    int ts_create;
+    int ts_add;
+    int ts_get_range;
+    int ts_start_end;
+    int num_ops;
 };
 
 extern const struct db_op_types Db2OpTypes;
 
 typedef struct
 {
-    uint32_t _size;
-    char _val[];
+    uint32_t size;
+    char val[];
 } db2_value_t;
 
 typedef struct 
 {
-    int _status;
-    int _body_size;
+    int status;
+    int body_size;
 } db_response_t;
 
 struct db_ts_create_response
 {
-    int _status;
-    db2_ts_descriptor_t _ts;
+    int status;
+    db2_ts_descriptor_t ts;
 };
 
 typedef struct
 {
-    uint64_t _hash;
-    db2_value_t* _key;
-    db2_value_t* _val;
+    uint64_t hash;
+    db2_value_t* key;
+    db2_value_t* val;
 } db_entry_t;
 
 struct db_op_insert_t
 {
-    uint32_t _key_size;
-    uint32_t _val_size;
-    uint64_t _key_hash;
+    uint32_t key_size;
+    uint32_t val_size;
+    uint64_t key_hash;
 };
 
 struct db_op_remove_t
 {
-    uint64_t _key_hash;
+    uint64_t key_hash;
 };
 
 struct db_op_find_t
 {
-    uint64_t _key_hash;
+    uint64_t key_hash;
 };
 
 struct db_op_ts_create_t
 {
-    uint32_t _key_size;
+    uint32_t key_size;
 };
 
 struct db_op_ts_add_t 
 {
-    int _ts;
-    double _val;
+    int ts;
+    double val;
 };
 
 struct db_op_ts_get_range_t
 {
-    int _ts;
-    db2_time_t _start;
-    db2_time_t _end;
+    int ts;
+    db2_time_t start;
+    db2_time_t end;
 };
 
 struct db_op_ts_start_end_t
 {
-    int _ts;
-    int _type; // 0 start, 1 end
+    int ts;
+    int type; // 0 start, 1 end
 };
 
 union db_op_header_t 
 {
-    struct db_op_insert_t _insert;
-    struct db_op_find_t _find;
-    struct db_op_remove_t _remove;
-    struct db_op_ts_create_t _ts_create;
-    struct db_op_ts_add_t _ts_add;
-    struct db_op_ts_get_range_t _ts_get_range;
-    struct db_op_ts_start_end_t _ts_start_end;
+    struct db_op_insert_t insert;
+    struct db_op_find_t find;
+    struct db_op_remove_t remove;
+    struct db_op_ts_create_t ts_create;
+    struct db_op_ts_add_t ts_add;
+    struct db_op_ts_get_range_t ts_get_range;
+    struct db_op_ts_start_end_t ts_start_end;
 };
 
 typedef struct
 {
-    int _op;
-    union db_op_header_t _header;
+    int op;
+    union db_op_header_t header;
 } db_op_t;
 
 

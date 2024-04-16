@@ -78,7 +78,7 @@ static int handle_connection(void)
     if (index == -1)
     {
         outl("cannot accept any more clients!");
-        db_response_t response = {._status = 500};
+        db_response_t response = {.status = 500};
         send(client_socket, &response, sizeof(db_response_t), 0);
         close(client_socket);
 
@@ -89,7 +89,7 @@ static int handle_connection(void)
         clients[index].fd = client_socket;
         clients[index].events = POLLIN | POLLHUP;
         
-        db_response_t response = {._status = 200};
+        db_response_t response = {.status = 200};
         send(clients[index].fd, &response, sizeof(db_response_t), 0);
         
         outl("accepted new connection %d at %d", client_socket, index);
@@ -110,7 +110,7 @@ static int handle_client_request(int client)
         return 0;
     }
 
-    outl("recieved %ld bytes from %d op %s", ops_length, client, op_names[op._op]);
+    outl("recieved %ld bytes from %d op %s", ops_length, client, op_names[op.op]);
 
     int op_res = handle_op(&op, client);
     (void)op_res;
@@ -120,19 +120,19 @@ static int handle_client_request(int client)
 
 static int handle_op(db_op_t* op, int client_index)
 {
-    int(*op_handlers[Db2OpTypes._num_ops])(db_op_t*, int);
+    int(*op_handlers[Db2OpTypes.num_ops])(db_op_t*, int);
     int client_socket = clients[client_index].fd;
 
 
-    op_handlers[Db2OpTypes._insert] = handle_insert;
-    op_handlers[Db2OpTypes._find] = handle_find;
-    op_handlers[Db2OpTypes._remove] = handle_remove;
-    op_handlers[Db2OpTypes._ts_create] = handle_create;
-    op_handlers[Db2OpTypes._ts_add] = handle_timeseries_add;
-    op_handlers[Db2OpTypes._ts_get_range] = handle_timeseries_get_range;
-    op_handlers[Db2OpTypes._ts_start_end] = handle_ts_start_end;
+    op_handlers[Db2OpTypes.insert] = handle_insert;
+    op_handlers[Db2OpTypes.find] = handle_find;
+    op_handlers[Db2OpTypes.remove] = handle_remove;
+    op_handlers[Db2OpTypes.ts_create] = handle_create;
+    op_handlers[Db2OpTypes.ts_add] = handle_timeseries_add;
+    op_handlers[Db2OpTypes.ts_get_range] = handle_timeseries_get_range;
+    op_handlers[Db2OpTypes.ts_start_end] = handle_ts_start_end;
     
-    return op_handlers[op->_op](op, client_socket);
+    return op_handlers[op->op](op, client_socket);
 }
 
 static int next_client_index(void)

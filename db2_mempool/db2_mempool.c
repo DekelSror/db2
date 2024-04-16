@@ -33,7 +33,7 @@ static void db2_free(db2_value_t* block)
 {
     if (block != NULL)
     {
-        current_size -= block->_size;
+        current_size -= block->size;
         free(block);
     }
 }

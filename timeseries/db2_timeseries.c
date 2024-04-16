@@ -7,9 +7,9 @@
 
 typedef struct
 {
-    db2_value_t* _key;
-    unsigned _size;
-    timeseries_entry_t _entries[db2_max_timeseries_entries];
+    db2_value_t* key;
+    unsigned size;
+    timeseries_entry_t entries[db2_max_timeseries_entries];
 } timeseries_t;
 
 static struct ts_range_t ts_range_params(struct db_op_ts_get_range_t header);
@@ -18,8 +18,8 @@ static timeseries_t db[db2_max_timeseries] = { 0 };
 static int next_series_index = 0;
 struct ts_range_t
 {
-    uint32_t _start_index;
-    uint32_t _end_index;
+    uint32_t start_index;
+    uint32_t end_index;
 };
 
 
@@ -31,7 +31,7 @@ int timeseries_can_create(struct db_op_ts_create_t header)
         return 0;
     }
 
-    if (!Mempool.has(header._key_size))
+    if (!Mempool.has(header.key_size))
     {
         return 0;
     }
@@ -44,20 +44,20 @@ int timeseries_create(db2_value_t* name)
 {
     for (int i = 0; i < next_series_index; i++)
     {
-        if (memcmp(name->_val, db[i]._key, name->_size) == 0)
+        if (memcmp(name->val, db[i].key, name->size) == 0)
         {
             Mempool.free(name);
-            outl("series '%s' already exists", db[i]._key->_val);
+            outl("series '%s' already exists", db[i].key->val);
             
             return i;
         }
     }
     
-    db[next_series_index]._key = name;
+    db[next_series_index].key = name;
 
-    outl("creating timeseries '%s' index %d", name->_val, next_series_index);
+    outl("creating timeseries '%s' index %d", name->val, next_series_index);
 
-    db[next_series_index]._size = 0;
+    db[next_series_index].size = 0;
 
     int rv = next_series_index;
 
@@ -70,17 +70,17 @@ int timeseries_create(db2_value_t* name)
 int timeseries_add(struct db_op_ts_add_t header)
 {
     db2_time_t add_time = db2_now();
-    timeseries_t* ts = db + header._ts;
+    timeseries_t* ts = db + header.ts;
 
 
-    int can_add = header._ts < next_series_index; 
-    can_add = can_add && db[header._ts]._size < db2_max_timeseries_entries;
+    int can_add = header.ts < next_series_index; 
+    can_add = can_add && db[header.ts].size < db2_max_timeseries_entries;
 
     if (can_add)
     {
-        ts->_entries[ts->_size]._time = add_time;
-        ts->_entries[ts->_size]._val = header._val;
-        ts->_size++;
+        ts->entries[ts->size].time = add_time;
+        ts->entries[ts->size].val = header.val;
+        ts->size++;
     } 
     
     
@@ -89,18 +89,18 @@ int timeseries_add(struct db_op_ts_add_t header)
 
 db2_time_t timeseries_start_end(struct db_op_ts_start_end_t header)
 {
-    return header._type == 0 ? 
-        db[header._ts]._entries[0]._time : 
-        db[header._ts]._entries[db[header._ts]._size - 1]._time;
+    return header.type == 0 ? 
+        db[header.ts].entries[0].time : 
+        db[header.ts].entries[db[header.ts].size - 1].time;
 }
 
 struct ts_slice_t timeseries_get_range(struct db_op_ts_get_range_t header)
 {
-    db2_ts_descriptor_t ts = header._ts;
+    db2_ts_descriptor_t ts = header.ts;
 
     struct ts_range_t range = ts_range_params(header);
 
-    if (range._end_index == range._start_index)
+    if (range.end_index == range.start_index)
     {
         return (struct ts_slice_t){
             .start = NULL,
@@ -109,41 +109,41 @@ struct ts_slice_t timeseries_get_range(struct db_op_ts_get_range_t header)
     }
 
     return (struct ts_slice_t){
-        .start =  db[ts]._entries + range._start_index,
-        .count = range._end_index - range._start_index
+        .start =  db[ts].entries + range.start_index,
+        .count = range.end_index - range.start_index
     };
 }
 
-// ._start_index == ._end_index on result means failure for now
+// .start_index == .end_index on result means failure for now
 static struct ts_range_t ts_range_params(struct db_op_ts_get_range_t header)
 {
-    timeseries_t series = db[header._ts];
-    db2_time_t start = header._start;
-    db2_time_t end = header._end;
+    timeseries_t series = db[header.ts];
+    db2_time_t start = header.start;
+    db2_time_t end = header.end;
 
     struct ts_range_t res = { 0 };
-    if (start > series._entries[series._size - 1]._time)
+    if (start > series.entries[series.size - 1].time)
     {
         return res;
     }
 
     uint32_t index = 0;
 
-    while (index < series._size)
+    while (index < series.size)
     {
-        if (series._entries[index]._time >= start)
+        if (series.entries[index].time >= start)
         {
-            res._start_index = index;
+            res.start_index = index;
             break;
         }
         index++;
     }
 
-    while (index < series._size)
+    while (index < series.size)
     {
-        if (series._entries[index]._time >= end)
+        if (series.entries[index].time >= end)
         {
-            res._end_index = index;
+            res.end_index = index;
             break;
         }
 

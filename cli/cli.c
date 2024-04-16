@@ -22,17 +22,17 @@ int get_command_code(char const* command)
 
 int cli_set(char const* key, char const* value)
 {
-    return Db2.kv_insert((char*)key, strlen(key), (char*)value, strlen(value));
+    return Db2.kv.insert((char*)key, strlen(key), (char*)value, strlen(value));
 }
 
 void* cli_get(char const* key)
 {
-    return Db2.kv_find((char*)key, strlen(key));
+    return Db2.kv.find((char*)key, strlen(key));
 }
 
 int cli_del(char const* key)
 {
-    return Db2.kv_remove((char*)key, strlen(key));
+    return Db2.kv.remove((char*)key, strlen(key));
 }
 
 int one_off_commad(int argc, char const* argv[])
@@ -87,9 +87,9 @@ int one_off_commad(int argc, char const* argv[])
 
 int main(int argc, char const *argv[])
 {
-    Db2.connect();
+    Db2.client.connect();
     int rv = one_off_commad(argc, argv);
-    Db2.stop();
+    Db2.client.stop();
 
     return rv;
 }

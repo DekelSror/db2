@@ -9,7 +9,5 @@ const struct db_op_types Db2OpTypes =
     .remove = 2,
     .ts_create = 3,
     .ts_add = 4,
-    .ts_get_range = 5,
-    .ts_start_end = 6,
-    .num_ops = 7
+    .num_ops = 5
 };

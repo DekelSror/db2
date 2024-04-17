@@ -23,8 +23,6 @@ struct db_op_types
     int remove;
     int ts_create;
     int ts_add;
-    int ts_get_range;
-    int ts_start_end;
     int num_ops;
 };
 
@@ -83,19 +81,6 @@ struct db_op_ts_add_t
     double val;
 };
 
-struct db_op_ts_get_range_t
-{
-    int ts;
-    db2_time_t start;
-    db2_time_t end;
-};
-
-struct db_op_ts_start_end_t
-{
-    int ts;
-    int type; // 0 start, 1 end
-};
-
 union db_op_header_t 
 {
     struct db_op_insert_t insert;
@@ -103,8 +88,6 @@ union db_op_header_t
     struct db_op_remove_t remove;
     struct db_op_ts_create_t ts_create;
     struct db_op_ts_add_t ts_add;
-    struct db_op_ts_get_range_t ts_get_range;
-    struct db_op_ts_start_end_t ts_start_end;
 };
 
 typedef struct
